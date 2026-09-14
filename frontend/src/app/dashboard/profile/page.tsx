@@ -28,8 +28,9 @@ export default function ProfilePage() {
 
   // Profile Form States
   const [fullName, setFullName] = useState(user?.full_name || "Siriman Ass");
-  const [email, setEmail] = useState(user?.email || "siramanass@mikroot.net");
+  const [email, setEmail] = useState(user?.email || "siramanass@tikzone.net");
   const [phone, setPhone] = useState(user?.phone_number || "+223 70 00 00 00");
+
   const [country, setCountry] = useState(user?.country || "Mali");
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);

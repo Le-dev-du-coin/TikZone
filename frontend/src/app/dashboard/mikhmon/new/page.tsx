@@ -115,8 +115,9 @@ export default function DashboardNewMikhmonPage() {
             <div className="p-3 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs flex items-center gap-2 text-slate-700 dark:text-slate-300 font-mono">
               <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>URL finale :</span>
-              <strong className="text-blue-700 dark:text-blue-400">https://{name}.mikroot.net</strong>
+              <strong className="text-blue-700 dark:text-blue-400">https://{name}.tikzone.net</strong>
             </div>
+
           )}
         </div>
 

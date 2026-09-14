@@ -8,8 +8,10 @@ import {
   CreditCard,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
   PlusCircle,
   Router as RouterIcon,
+
   User,
   Wallet,
   Wifi,
@@ -84,7 +86,7 @@ export default function Sidebar({
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-black text-lg text-slate-950 dark:text-white tracking-tight">Mikroot</span>
+                <span className="font-black text-lg text-slate-950 dark:text-white tracking-tight">TikZone</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30">
                   {appVersion}
                 </span>
@@ -153,6 +155,19 @@ export default function Sidebar({
               </Link>
             );
           })}
+
+          <div className="pt-3">
+            <a
+              href="https://wa.me/22399281899?text=Bonjour%20TikZone%2C%20j%27ai%20besoin%20d%27assistance%20technique"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors border border-emerald-200/80 dark:border-emerald-800/50"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>Support WhatsApp</span>
+              <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500 text-white font-bold">24/7</span>
+            </a>
+          </div>
         </nav>
 
         {/* User Footer Profile */}
@@ -170,9 +185,10 @@ export default function Sidebar({
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-600 transition-colors">
                   {user?.full_name || "Utilisateur"}
                 </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email || "compte@mikroot.net"}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email || "compte@tikzone.net"}</p>
               </div>
             </Link>
+
 
             <button
               type="button"

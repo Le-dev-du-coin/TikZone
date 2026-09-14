@@ -62,7 +62,7 @@ export default function LoginPage() {
           </Link>
           <h1 className="text-2xl font-black text-slate-950 dark:text-white tracking-tight">Connexion</h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Accédez à votre espace d'exploitation Mikroot
+            Accédez à votre espace d'exploitation TikZone
           </p>
         </div>
 
@@ -85,7 +85,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
-                placeholder="siramanass@mikroot.net"
+                placeholder="siramanass@tikzone.net"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 suppressHydrationWarning
@@ -127,12 +127,26 @@ export default function LoginPage() {
         </form>
 
         {/* Footer */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
-          Pas encore de compte ?{" "}
-          <Link href="/register" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
-            Créer un compte
-          </Link>
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 text-center text-xs text-slate-500 dark:text-slate-400">
+          <div>
+            Pas encore de compte ?{" "}
+            <Link href="/register" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
+              Créer un compte
+            </Link>
+          </div>
+          <div className="pt-2 border-t border-slate-100/60 dark:border-slate-800/60">
+            Besoin d'aide ?{" "}
+            <a
+              href="https://wa.me/22399281899?text=Bonjour%20TikZone%2C%20j%27ai%20besoin%20d%27assistance%20pour%20me%20connecter"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+            >
+              Support WhatsApp (+223 99 28 18 99)
+            </a>
+          </div>
         </div>
+
       </div>
     </div>
   );

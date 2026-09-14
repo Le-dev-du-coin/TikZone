@@ -103,7 +103,7 @@ function NewRouterForm() {
         script: res.script,
         apiPort: vpnCred ? vpnCred.api_port : 41009,
         winboxPort: vpnCred ? vpnCred.winbox_port : 51009,
-        vpnServer: vpnCred ? vpnCred.vpn_server : "vpn.mikroot.net",
+        vpnServer: vpnCred ? vpnCred.vpn_server : "vpn.tikzone.net",
         newBalance: res.new_balance ?? balanceAfter,
       });
 
@@ -167,9 +167,10 @@ function NewRouterForm() {
               Routeur « {createdSuccess.routerName} » activé avec succès !
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Rattaché à <strong>{createdSuccess.spaceName}.mikroot.net</strong> • Débit : <strong>-500 FCFA</strong> (Nouveau solde : {formatFCFA(createdSuccess.newBalance)})
+              Rattaché à <strong>{createdSuccess.spaceName}.tikzone.net</strong> • Débit : <strong>-500 FCFA</strong> (Nouveau solde : {formatFCFA(createdSuccess.newBalance)})
             </p>
           </div>
+
 
           {/* Endpoints */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -262,9 +263,10 @@ function NewRouterForm() {
             >
               {instances.map((opt) => (
                 <option key={opt.id} value={opt.id}>
-                  {opt.name}.mikroot.net (ROS {opt.routeros_version})
+                  {opt.name}.tikzone.net (ROS {opt.routeros_version})
                 </option>
               ))}
+
             </select>
           </div>
 

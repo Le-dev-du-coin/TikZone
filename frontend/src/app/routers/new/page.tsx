@@ -20,8 +20,8 @@ export default function NewRouterPage() {
   const balanceAfter = balance - price;
 
   const mikhmonOptions = [
-    { id: "inst-1", name: "siramanass.mikroot.net (V7)" },
-    { id: "inst-2", name: "dembeleservices.mikroot.net (V7)" },
+    { id: "inst-1", name: "siramanass.tikzone.net (V7)" },
+    { id: "inst-2", name: "dembeleservices.tikzone.net (V7)" },
   ];
 
   const handleCreate = (e: React.FormEvent) => {
@@ -30,10 +30,11 @@ export default function NewRouterPage() {
 
     const vpnUser = `${routerName.toLowerCase()}_${Math.floor(10000 + Math.random() * 90000)}`;
     const vpnPass = Math.random().toString(36).slice(-12);
-    const script = `/interface l2tp-client add connect-to=vpn.mikroot.net name=${routerName}-VPN user=${vpnUser} password=${vpnPass} disabled=no add-default-route=no use-ipsec=no\n/ip firewall filter add action=accept chain=input in-interface=${routerName}-VPN comment="Autoriser le trafic de ${routerName}-VPN" place-before=0`;
+    const script = `/interface l2tp-client add connect-to=vpn.tikzone.net name=${routerName}-VPN user=${vpnUser} password=${vpnPass} disabled=no add-default-route=no use-ipsec=no\n/ip firewall filter add action=accept chain=input in-interface=${routerName}-VPN comment="TikZone VPN" place-before=0`;
 
     setCreatedScript(script);
   };
+
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

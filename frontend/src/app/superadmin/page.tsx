@@ -61,8 +61,9 @@ export default function SuperAdminPage() {
     {
       id: "c-1",
       full_name: "Siriman Ass",
-      email: "sirimanass@mikroot.net",
+      email: "sirimanass@tikzone.net",
       phone: "+223 70 00 00 00",
+
       country: "Mali",
       role: "TECHNICIAN",
       role_display: "Technicien",
@@ -148,7 +149,8 @@ export default function SuperAdminPage() {
           <div>
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white">Espace SuperAdmin Mikroot</h1>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white">Espace SuperAdmin TikZone</h1>
+
             </div>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               Supervision globale, gestion des clients, des soldes et des tarifs de la plateforme.

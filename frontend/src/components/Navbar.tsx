@@ -18,8 +18,9 @@ export default function Navbar({ balance = 500 }: { balance?: number }) {
                 <Wifi className="w-5 h-5" />
               </div>
               <div>
-                <span className="font-bold text-lg text-slate-900 tracking-tight">Mikroot</span>
+                <span className="font-bold text-lg text-slate-900 tracking-tight">TikZone</span>
                 <span className="text-xs ml-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">SaaS v2</span>
+
               </div>
             </Link>
           </div>

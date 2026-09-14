@@ -13,6 +13,7 @@ urlpatterns = [
     re_path(r"^api/routers/?", include("apps.routers.urls")),
 ]
 
-admin.site.site_header = "Mikroot SaaS - SuperAdmin"
-admin.site.site_title = "Mikroot Admin Portal"
+admin.site.site_header = "TikZone SaaS - SuperAdmin"
+admin.site.site_title = "TikZone Admin Portal"
 admin.site.index_title = "Gestion Globale de la Plateforme"
+

@@ -74,8 +74,9 @@ export default function RegisterPage() {
           </Link>
           <h1 className="text-2xl font-black text-slate-950 dark:text-white tracking-tight">Créer un compte</h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Rejoignez Mikroot pour gérer vos hotspots MikroTik en ligne
+            Rejoignez TikZone pour gérer vos hotspots MikroTik en ligne
           </p>
+
         </div>
 
         {errorMessage && (
@@ -206,12 +207,26 @@ export default function RegisterPage() {
         </form>
 
         {/* Footer */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
-          Déjà un compte ?{" "}
-          <Link href="/login" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
-            Se connecter
-          </Link>
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 text-center text-xs text-slate-500 dark:text-slate-400">
+          <div>
+            Déjà un compte ?{" "}
+            <Link href="/login" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
+              Se connecter
+            </Link>
+          </div>
+          <div className="pt-2 border-t border-slate-100/60 dark:border-slate-800/60">
+            Une question avant de vous inscrire ?{" "}
+            <a
+              href="https://wa.me/22399281899?text=Bonjour%20TikZone%2C%20je%20souhaite%20des%20renseignements%20sur%20la%20plateforme"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+            >
+              Contactez le support (+223 99 28 18 99)
+            </a>
+          </div>
         </div>
+
       </div>
     </div>
   );

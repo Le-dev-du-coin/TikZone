@@ -114,9 +114,10 @@ class PlatformSetting(models.Model):
     mikhmon_base_domain = models.CharField(
         "Domaine de base Mikhmon",
         max_length=100,
-        default="mikroot.app",
-        help_text="Ex: mikroot.app (les sous-domaines seront https://espace.mikroot.app)",
+        default="tikzone.net",
+        help_text="Ex: tikzone.net (les sous-domaines seront https://espace.tikzone.net)",
     )
+
     updated_at = models.DateTimeField("Dernière modification", auto_now=True)
 
     class Meta:

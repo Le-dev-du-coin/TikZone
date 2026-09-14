@@ -74,7 +74,7 @@ export default function LoginPage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20">
             <Wifi className="h-7 w-7" />
           </div>
-          <CardTitle className="text-2xl font-black tracking-tight">Mikroot Hotspot</CardTitle>
+          <CardTitle className="text-2xl font-black tracking-tight">TikZone Hotspot</CardTitle>
           <CardDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Gestionnaire de Hotspots MikroTik & Tickets
           </CardDescription>
@@ -82,10 +82,11 @@ export default function LoginPage() {
           {spaceName && (
             <div className="pt-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-mono font-bold">
-                Espace : {spaceName}.mikroot.net
+                Espace : {spaceName}.tikzone.net
               </span>
             </div>
           )}
+
         </CardHeader>
 
         <CardContent className="p-6 sm:p-8 pt-2">
@@ -142,8 +143,21 @@ export default function LoginPage() {
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
             <span>Accès sécurisé et isolé par espace</span>
           </div>
+
+          <div className="mt-3 pt-2 text-center text-xs text-slate-500 dark:text-slate-400">
+            Besoin d'aide ?{" "}
+            <a
+              href="https://wa.me/22399281899?text=Bonjour%20TikZone%2C%20j%27ai%20besoin%20d%27assistance%20sur%20mon%20espace%20Hotspot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+            >
+              Support WhatsApp (+223 99 28 18 99)
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+

@@ -90,9 +90,10 @@ export default function DashboardLayout({
           balance={balance}
           onOpenSidebar={() => setIsSidebarOpen(true)}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-28 sm:pb-12 max-w-7xl w-full mx-auto">
           {children}
         </main>
+
       </div>
     </div>
   );

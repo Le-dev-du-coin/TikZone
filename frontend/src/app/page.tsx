@@ -24,17 +24,17 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-600 selection:text-white">
       {/* Top Navbar */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-18">
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-xs">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 sm:h-18">
             {/* Brand Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                <Wifi className="w-5 h-5" />
+            <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                <Wifi className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="font-black text-xl text-slate-900 tracking-tight">Mikroot</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="font-black text-lg sm:text-xl text-slate-900 tracking-tight">TikZone</span>
+                <span className="hidden sm:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                   {appVersion}
                 </span>
               </div>
@@ -43,14 +43,16 @@ export default function LandingPage() {
             {/* Desktop Navigation Links */}
             <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
               <a href="#features" className="hover:text-blue-600 transition-colors">Fonctionnalités</a>
-              <a href="#comparison" className="hover:text-blue-600 transition-colors">Pourquoi Mikroot ?</a>
+              <a href="#comparison" className="hover:text-blue-600 transition-colors">Pourquoi TikZone ?</a>
               <a href="#pricing" className="hover:text-blue-600 transition-colors">Tarifs</a>
               <a href="#faq" className="hover:text-blue-600 transition-colors">FAQ</a>
             </div>
 
             {/* Right Controls: Lang + Theme + Auth */}
-            <div className="flex items-center gap-3">
-              <LangToggle />
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <div className="hidden sm:flex items-center">
+                <LangToggle />
+              </div>
               <ThemeToggle />
 
               <Link
@@ -61,7 +63,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/register"
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all transform hover:-translate-y-0.5"
+                className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all transform hover:-translate-y-0.5 shrink-0"
               >
                 Démarrer
               </Link>
@@ -69,6 +71,7 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
+
 
       {/* Hero Section */}
       <section className="relative pt-16 pb-20 overflow-hidden bg-gradient-to-b from-blue-50/40 via-white to-white">
@@ -182,9 +185,10 @@ export default function LandingPage() {
                   <ShieldCheck className="w-6 h-6 text-blue-700" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900">Mikroot Cloud Engine</h3>
+                  <h3 className="font-bold text-base text-slate-900">TikZone Cloud Engine</h3>
                   <p className="text-xs text-blue-700">100% Natif RouterOS 7.21+</p>
                 </div>
+
               </div>
 
               <ul className="space-y-3 text-xs sm:text-sm text-slate-700">
@@ -343,7 +347,7 @@ export default function LandingPage() {
           <div className="text-center space-y-2">
             <span className="text-xs font-bold uppercase tracking-widest text-blue-600">Questions Fréquentes</span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              Tout ce que vous devez savoir sur Mikroot
+              Tout ce que vous devez savoir sur TikZone
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               Des réponses claires pour vous aider à démarrer sereinement.
@@ -353,8 +357,8 @@ export default function LandingPage() {
           <div className="space-y-3">
             {[
               {
-                q: "Qu'est-ce que Mikroot et pourquoi remplace-t-il l'ancienne version ?",
-                a: "Mikroot est une plateforme cloud nouvelle génération conçue spécifiquement pour RouterOS 7 (7.10 à 7.21+). Contrairement à l'ancien système PHP qui plante lors des mises à jour récentes de MikroTik (scripts bloqués, erreurs de calculs de rapports), Mikroot offre une connexion 100% stable, un tunnel VPN sécurisé et une interface rapide pensée pour smartphone.",
+                q: "Qu'est-ce que TikZone et pourquoi remplace-t-il l'ancienne version ?",
+                a: "TikZone est une plateforme cloud nouvelle génération conçue spécifiquement pour RouterOS 7 (7.10 à 7.21+). Contrairement à l'ancien système PHP qui plante lors des mises à jour récentes de MikroTik (scripts bloqués, erreurs de calculs de rapports), TikZone offre une connexion 100% stable, un tunnel VPN sécurisé et une interface rapide pensée pour smartphone.",
               },
               {
                 q: "Ai-je besoin d'une adresse IP publique fixe pour mon routeur ?",
@@ -370,7 +374,7 @@ export default function LandingPage() {
               },
               {
                 q: "Comment imprimer mes coupons / tickets sur une imprimante thermique ?",
-                a: "Mikroot intègre un moteur d'export haute fidélité qui génère des tickets au format idéal pour imprimantes thermiques de caisse (80mm ou 58mm) ainsi que sur feuilles A4 pour impression standard.",
+                a: "TikZone intègre un moteur d'export haute fidélité qui génère des tickets au format idéal pour imprimantes thermiques de caisse (80mm ou 58mm) ainsi que sur feuilles A4 pour impression standard.",
               },
               {
                 q: "Que se passe-t-il si mon abonnement mensuel de routeur arrive à expiration ?",
@@ -401,16 +405,25 @@ export default function LandingPage() {
             <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">
               <Wifi className="w-3.5 h-3.5" />
             </div>
-            <span className="font-bold text-slate-900">Mikroot Cloud SaaS</span>
+            <span className="font-bold text-slate-900">TikZone Cloud SaaS</span>
             <span>• {appVersion} • © 2026 Tous droits réservés.</span>
           </div>
 
           <div className="flex items-center gap-6">
+            <a
+              href="https://wa.me/22399281899?text=Bonjour%20TikZone%2C%20j%27ai%20besoin%20d%27assistance"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-600 font-bold hover:underline"
+            >
+              Support WhatsApp : +223 99 28 18 99
+            </a>
             <Link href="/login" className="hover:text-blue-600 transition-colors">Connexion</Link>
             <Link href="/register" className="hover:text-blue-600 transition-colors">Inscription</Link>
           </div>
         </div>
       </footer>
+
     </div>
   );
 }

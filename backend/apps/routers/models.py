@@ -189,24 +189,30 @@ class VpnCredential(models.Model):
             )
             server_port = getattr(settings, "VPN_WG_SERVER_PORT", 51820)
             return (
+                f"/interface wireguard remove [find name=wg-tikzone]\n"
                 f"/interface wireguard remove [find name=wg-mikroot]\n"
-                f"/interface wireguard add name=wg-mikroot listen-port={self.wireguard_listen_port} mtu=1420 private-key=\"{self.wireguard_private_key}\" comment=\"Mikroot VPN\"\n"
+                f"/interface wireguard add name=wg-tikzone listen-port={self.wireguard_listen_port} mtu=1420 private-key=\"{self.wireguard_private_key}\" comment=\"TikZone VPN\"\n"
+                f"/ip address remove [find interface=wg-tikzone]\n"
                 f"/ip address remove [find interface=wg-mikroot]\n"
-                f"/ip address add address={self.assigned_ip}/24 interface=wg-mikroot\n"
-                f"/interface wireguard peers remove [find interface=wg-mikroot]\n"
-                f"/interface wireguard peers add interface=wg-mikroot endpoint-address={self.vpn_server} endpoint-port={server_port} public-key=\"{server_pubkey}\" allowed-address={vpn_subnet} persistent-keepalive=25s comment=\"Mikroot VPN Server\"\n"
+                f"/ip address add address={self.assigned_ip}/24 interface=wg-tikzone\n"
+                f"/interface wireguard peers remove [find interface=wg-tikzone]\n"
+                f"/interface wireguard peers add interface=wg-tikzone endpoint-address={self.vpn_server} endpoint-port={server_port} public-key=\"{server_pubkey}\" allowed-address={vpn_subnet} persistent-keepalive=25s comment=\"TikZone VPN Server\"\n"
                 f"/ip service set api disabled=no port=8728 address=\"\"\n"
                 f"/ip service set winbox disabled=no port=8291 address=\"\"\n"
+                f"/ip firewall filter remove [find comment=\"TikZone VPN API\"]\n"
                 f"/ip firewall filter remove [find comment=\"Mikroot VPN API\"]\n"
-                f"/ip firewall filter add action=accept chain=input in-interface=wg-mikroot comment=\"Mikroot VPN API\" place-before=0"
+                f"/ip firewall filter add action=accept chain=input in-interface=wg-tikzone comment=\"TikZone VPN API\" place-before=0"
             )
         else:
             # === SCRIPT ROUTEROS 6 (L2TP / IPSEC) ===
             return (
+                f"/interface l2tp-client remove [find name=tikzone-vpn]\n"
                 f"/interface l2tp-client remove [find name=mikroot-vpn]\n"
-                f"/interface l2tp-client add connect-to={self.vpn_server} name=mikroot-vpn user=\"{self.vpn_user}\" password=\"{self.vpn_password}\" disabled=no add-default-route=no use-ipsec=yes ipsec-secret=\"{self.vpn_password}\" comment=\"Mikroot VPN\"\n"
+                f"/interface l2tp-client add connect-to={self.vpn_server} name=tikzone-vpn user=\"{self.vpn_user}\" password=\"{self.vpn_password}\" disabled=no add-default-route=no use-ipsec=yes ipsec-secret=\"{self.vpn_password}\" comment=\"TikZone VPN\"\n"
                 f"/ip service set api disabled=no port=8728 address=\"\"\n"
                 f"/ip service set winbox disabled=no port=8291 address=\"\"\n"
+                f"/ip firewall filter remove [find comment=\"TikZone VPN API\"]\n"
                 f"/ip firewall filter remove [find comment=\"Mikroot VPN API\"]\n"
-                f"/ip firewall filter add action=accept chain=input in-interface=mikroot-vpn comment=\"Mikroot VPN API\" place-before=0"
+                f"/ip firewall filter add action=accept chain=input in-interface=tikzone-vpn comment=\"TikZone VPN API\" place-before=0"
             )
+

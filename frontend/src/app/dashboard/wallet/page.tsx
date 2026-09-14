@@ -104,9 +104,10 @@ export default function DashboardWalletPage() {
         </div>
         <div className="text-3xl sm:text-4xl font-black text-white">{formatFCFA(balance)}</div>
         <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-          <span>Mikroot Wallet Sécurisé</span>
+          <span>TikZone Wallet Sécurisé</span>
           <span>Devise : Franc CFA</span>
         </div>
+
       </div>
 
       {successMessage && (
