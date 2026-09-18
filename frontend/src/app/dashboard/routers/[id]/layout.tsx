@@ -1,11 +1,21 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import RouterSidebar from "@/components/RouterSidebar";
 import RouterSwitcher from "@/components/RouterSwitcher";
 import { api, RouterData } from "@/lib/api";
-import { Menu, Wifi } from "lucide-react";
+import {
+  ArrowLeft,
+  Gauge,
+  LayoutDashboard,
+  Printer,
+  Radio,
+  ScrollText,
+  Settings,
+  Users,
+  Wifi,
+} from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface RouterLayoutProps {
   children: React.ReactNode;
@@ -15,9 +25,9 @@ interface RouterLayoutProps {
 export default function RouterSpaceLayout({ children, params }: RouterLayoutProps) {
   const resolvedParams = use(params);
   const routerId = resolvedParams.id;
+  const pathname = usePathname();
 
   const [router, setRouter] = useState<RouterData | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,48 +45,101 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
     };
   }, [routerId]);
 
+  const basePath = `/dashboard/routers/${routerId}`;
+
+  const tabs = [
+    {
+      href: basePath,
+      label: "Tableau de bord",
+      icon: LayoutDashboard,
+      exact: true,
+    },
+    {
+      href: `${basePath}/users`,
+      label: "Utilisateurs & Tickets",
+      icon: Users,
+    },
+    {
+      href: `${basePath}/active`,
+      label: "Sessions Actives",
+      icon: Radio,
+    },
+    {
+      href: `${basePath}/profiles`,
+      label: "Profils de Débit",
+      icon: Gauge,
+    },
+    {
+      href: `${basePath}/tickets`,
+      label: "Générateur & Impression",
+      icon: Printer,
+    },
+    {
+      href: `${basePath}/logs`,
+      label: "Logs en Direct",
+      icon: ScrollText,
+    },
+    {
+      href: `${basePath}/system`,
+      label: "Outils & Winbox",
+      icon: Settings,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50 flex">
-      {/* Dedicated Router Sidebar */}
-      <RouterSidebar
-        routerId={routerId}
-        routerName={router?.name || "Routeur MikroTik"}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col min-w-0 md:pl-72 transition-all">
-        {/* Router Header Bar */}
-        <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-6 flex items-center justify-between gap-3">
+    <div className="space-y-5">
+      {/* Top Router Navigation Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            <Link
+              href="/dashboard"
+              className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+              title="Retour au tableau de bord global"
             >
-              <Menu className="w-5 h-5" />
-            </button>
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
 
-            {/* Router Switcher Dropdown */}
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+            {/* Dynamic Router Switcher */}
             <RouterSwitcher currentRouterId={routerId} />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 bg-slate-100 dark:bg-slate-900 rounded-xl transition-colors"
-            >
-              <span>Hub Principal</span>
-            </Link>
+          <div className="flex items-center gap-2 self-start sm:self-center text-xs">
+            <span className="text-slate-500 dark:text-slate-400">Accès Winbox :</span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono font-bold text-blue-600 dark:text-blue-400">
+              vpn.tikzone.net:{router?.vpn?.winbox_port || 51001}
+            </span>
           </div>
-        </header>
+        </div>
 
-        {/* Content Body */}
-        <main className="flex-1 px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-28 sm:pb-12 max-w-7xl w-full mx-auto">
-          {children}
-        </main>
+        {/* Sub-navigation Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-t border-slate-100 dark:border-slate-800 pt-3">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
+
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Main Page Content */}
+      <div>{children}</div>
     </div>
   );
 }

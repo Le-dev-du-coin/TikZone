@@ -8,7 +8,9 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Copy,
   Cpu,
+  ExternalLink,
   HardDrive,
   Info,
   KeyRound,
@@ -18,7 +20,9 @@ import {
   RotateCcw,
   ScrollText,
   Server,
+  ShieldAlert,
   Sparkles,
+  Terminal,
   Users,
   Wifi,
   X,
@@ -41,6 +45,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [copiedWinbox, setCopiedWinbox] = useState(false);
 
   // Modales
   const [showAddModal, setShowAddModal] = useState(false);
@@ -63,7 +68,6 @@ export default function RouterDashboardPage({ params }: PageProps) {
   const [genPrefix, setGenPrefix] = useState("");
   const [genCodeLength, setGenCodeLength] = useState(6);
   const [genPrice, setGenPrice] = useState(100);
-  const [generatedBatch, setGeneratedBatch] = useState<any[] | null>(null);
 
   const loadData = async (isSilent = false) => {
     if (!isSilent) setRefreshing(true);
@@ -136,7 +140,6 @@ export default function RouterDashboardPage({ params }: PageProps) {
         code_length: genCodeLength,
         price: genPrice,
       });
-      setGeneratedBatch(res.tickets || []);
       setActionSuccess(`${res.count || genCount} tickets générés avec succès !`);
       loadData(true);
     } catch (err: any) {
@@ -159,61 +162,81 @@ export default function RouterDashboardPage({ params }: PageProps) {
     }
   };
 
-  if (loading && !router) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-10 w-64 bg-slate-200 dark:bg-slate-800 rounded-xl" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="h-28 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
-          <div className="h-28 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
-          <div className="h-28 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
+  const winboxAddress = `${router?.vpn?.vpn_server || "vpn.tikzone.net"}:${router?.vpn?.winbox_port || 51005}`;
 
-  const isOnline = telemetry?.online ?? true;
+  const copyWinbox = () => {
+    navigator.clipboard.writeText(winboxAddress);
+    setCopiedWinbox(true);
+    setTimeout(() => setCopiedWinbox(false), 2000);
+  };
+
+  const isOnline = telemetry?.online ?? false;
 
   return (
     <div className="space-y-6">
-      {/* Title & Top Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              {router?.name || "Routeur MikroTik"}
-            </h1>
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                isOnline
-                  ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                  : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`}></span>
-              {isOnline ? "En ligne" : "Hors ligne"}
-            </span>
+      {/* SECTION 1: BANDEAU ROUTEUR & ACCÈS WINBOX DIRECT */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 shrink-0">
+            <Wifi className="w-6 h-6" />
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Tunnel WireGuard • IP VPN : <span className="font-mono font-bold text-slate-700 dark:text-slate-200">{router?.vpn?.assigned_ip || "172.29.88.x"}</span>
-          </p>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                {router?.name || "Routeur MikroTik"}
+              </h1>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                  isOnline
+                    ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                    : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`}></span>
+                {isOnline ? "En ligne (Connecté)" : "En attente de connexion"}
+              </span>
+            </div>
+
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <span>Tunnel WireGuard : <strong className="font-mono text-slate-700 dark:text-slate-200">{router?.vpn?.assigned_ip || "172.29.88.x"}</strong></span>
+              <span>•</span>
+              <span>Port API Distant : <strong className="font-mono text-slate-700 dark:text-slate-200">{router?.vpn?.api_port || 41005}</strong></span>
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Winbox Direct Access Widget */}
+        <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
+          <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+            <Server className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <div className="text-left">
+              <p className="text-[9px] uppercase font-bold text-slate-400">Connexion Winbox</p>
+              <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">{winboxAddress}</p>
+            </div>
+            <button
+              type="button"
+              onClick={copyWinbox}
+              className="ml-1 p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+              title="Copier pour Winbox"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => loadData()}
             disabled={refreshing}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs transition-colors cursor-pointer"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-300 cursor-pointer"
+            title="Actualiser la télémétrie"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-blue-600" : ""}`} />
-            <span>Actualiser</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-blue-600" : ""}`} />
           </button>
 
           <button
             type="button"
             onClick={() => setShowRebootConfirm(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 text-xs font-bold rounded-xl border border-rose-200 dark:border-rose-800/50 transition-colors cursor-pointer"
+            className="px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Redémarrer</span>
@@ -221,17 +244,17 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* SECTION 1: TÉLÉMÉTRIE MATÉRIELLE EN DIRECT (Fidèle à la Capture 3) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+      {/* SECTION 2: TÉLÉMÉTRIE MATÉRIELLE ÉPURÉE (Fidèle à la Capture 3) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Carte 1 : Date & Uptime */}
-        <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <Calendar className="w-6 h-6" />
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <Calendar className="w-5 h-5" />
           </div>
-          <div className="min-w-0 space-y-1">
+          <div className="min-w-0 space-y-0.5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Date & Heure Système</p>
             <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-              {telemetry?.system_date || "-"} {telemetry?.system_time || ""}
+              {telemetry?.system_date ? `${telemetry.system_date} ${telemetry.system_time || ""}` : "2026-09-18 20:55:00"}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
               <Clock className="w-3 h-3 text-emerald-500" />
@@ -241,36 +264,34 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
 
         {/* Carte 2 : Board Name & RouterOS */}
-        <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-            <Info className="w-6 h-6" />
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Info className="w-5 h-5" />
           </div>
-          <div className="min-w-0 space-y-1">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Modèle & Matériel</p>
+          <div className="min-w-0 space-y-0.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Matériel & RouterOS</p>
             <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-              {telemetry?.board_name || telemetry?.model || "L009UiGS-2HaxD"}
+              {telemetry?.board_name || "L009UiGS-2HaxD"}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              RouterOS : <strong className="text-indigo-600 dark:text-indigo-400">{telemetry?.routeros_version || "7.24.4 (stable)"}</strong>
+              Version : <strong className="text-indigo-600 dark:text-indigo-400">{telemetry?.routeros_version || "7.24.4 (stable)"}</strong>
             </p>
           </div>
         </div>
 
         {/* Carte 3 : CPU & RAM & HDD */}
-        <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <Cpu className="w-6 h-6" />
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Cpu className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Charge CPU</span>
               <span className="text-xs font-black text-slate-900 dark:text-white">{telemetry?.cpu_load ?? 28}%</span>
             </div>
-            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${
-                  (telemetry?.cpu_load ?? 28) > 80 ? "bg-rose-500" : "bg-amber-500"
-                }`}
+                className="h-full rounded-full bg-amber-500 transition-all"
                 style={{ width: `${Math.min(telemetry?.cpu_load ?? 28, 100)}%` }}
               />
             </div>
@@ -282,45 +303,60 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* SECTION 2: 4 CARTES KPI HOTSPOT & ACTIONS (Fidèle à la Capture 1) */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          <Wifi className="w-4 h-4 text-blue-600" />
-          <span>Gestion du Hotspot</span>
+      {/* SECTION 3: CARTES STATISTIQUES HOTSPOT & ACTIONS (Design Sobre & Épuré) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Wifi className="w-4 h-4 text-blue-600" />
+            <span>Indicateurs & Actions Hotspot</span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {/* 1. Bleu : Actifs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 1. Carte Sessions Actives */}
           <Link
             href={`/dashboard/routers/${routerId}/active`}
-            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md shadow-blue-500/20 hover:scale-[1.02] transition-transform flex flex-col justify-between cursor-pointer"
+            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all flex flex-col justify-between group cursor-pointer"
           >
-            <div>
-              <span className="text-2xl sm:text-3xl font-black">{hotspot?.active_count ?? 44}</span>
-              <span className="text-xs font-bold ml-1 opacity-90">connectés</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Sessions Actives</span>
+              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Radio className="w-4 h-4" />
+              </div>
             </div>
-            <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold opacity-95">
-              <Radio className="w-3.5 h-3.5" />
-              <span>Sessions Actives</span>
+            <div className="mt-3">
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                {hotspot?.active_count ?? 44}
+              </div>
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Connectés en direct</span>
+              </p>
             </div>
           </Link>
 
-          {/* 2. Vert : Total Utilisateurs */}
+          {/* 2. Carte Utilisateurs Enregistrés */}
           <Link
             href={`/dashboard/routers/${routerId}/users`}
-            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 hover:scale-[1.02] transition-transform flex flex-col justify-between cursor-pointer"
+            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all flex flex-col justify-between group cursor-pointer"
           >
-            <div>
-              <span className="text-2xl sm:text-3xl font-black">{hotspot?.total_users_count ?? 389}</span>
-              <span className="text-xs font-bold ml-1 opacity-90">tickets</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Total Utilisateurs</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Users className="w-4 h-4" />
+              </div>
             </div>
-            <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold opacity-95">
-              <Users className="w-3.5 h-3.5" />
-              <span>Utilisateurs Hotspot</span>
+            <div className="mt-3">
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                {hotspot?.total_users_count ?? 389}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Comptes & tickets en mémoire
+              </p>
             </div>
           </Link>
 
-          {/* 3. Jaune : + Ajouter un Utilisateur */}
+          {/* 3. Bouton d'Action : + Ajouter Ticket */}
           <button
             type="button"
             onClick={() => {
@@ -328,74 +364,87 @@ export default function RouterDashboardPage({ params }: PageProps) {
               setActionError(null);
               setShowAddModal(true);
             }}
-            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-amber-500 to-yellow-600 text-white shadow-md shadow-amber-500/20 hover:scale-[1.02] transition-transform flex flex-col justify-between text-left cursor-pointer"
+            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-amber-500/50 dark:hover:border-amber-500/50 transition-all flex flex-col justify-between text-left group cursor-pointer"
           >
-            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-              <Plus className="w-5 h-5" />
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Création Rapide</span>
+              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-4 h-4" />
+              </div>
             </div>
             <div className="mt-3">
-              <p className="text-base font-black">+ Ajouter</p>
-              <p className="text-xs font-semibold opacity-90">1 Ticket Individuel</p>
+              <div className="text-base font-black text-slate-900 dark:text-white">
+                + Ajouter un Ticket
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Créer un utilisateur individuel
+              </p>
             </div>
           </button>
 
-          {/* 4. Rouge : ⚡ Générer un Lot de Vouchers */}
+          {/* 4. Bouton d'Action : ⚡ Générer un Lot */}
           <button
             type="button"
             onClick={() => {
               setActionSuccess(null);
               setActionError(null);
-              setGeneratedBatch(null);
               setShowGenModal(true);
             }}
-            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-md shadow-rose-500/20 hover:scale-[1.02] transition-transform flex flex-col justify-between text-left cursor-pointer"
+            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-rose-500/50 dark:hover:border-rose-500/50 transition-all flex flex-col justify-between text-left group cursor-pointer"
           >
-            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-              <Zap className="w-5 h-5" />
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Production de Masse</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Zap className="w-4 h-4" />
+              </div>
             </div>
             <div className="mt-3">
-              <p className="text-base font-black">⚡ Générer</p>
-              <p className="text-xs font-semibold opacity-90">Lot de Tickets Vouchers</p>
+              <div className="text-base font-black text-slate-900 dark:text-white">
+                ⚡ Générer un Lot
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Coupons & impression rapide
+              </p>
             </div>
           </button>
         </div>
       </div>
 
-      {/* SECTION 3: JOURNAUX D'ACTIVITÉ EN DIRECT (Fidèle à la Capture 4) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-xs overflow-hidden">
+      {/* SECTION 4: JOURNAUX D'ACTIVITÉ RÉCENTS (Tableau Pro) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ScrollText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-              Journal d'Activité Hotspot (Logs en Direct)
+            <h3 className="font-black text-sm text-slate-900 dark:text-white">
+              Derniers Événements Hotspot (Logs)
             </h3>
           </div>
           <Link
             href={`/dashboard/routers/${routerId}/logs`}
             className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
           >
-            Voir tout l'historique →
+            Consulter tout le journal →
           </Link>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800">
+            <thead className="bg-slate-50/70 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-3">Heure</th>
+                <th className="px-4 py-3">Horodatage</th>
                 <th className="px-4 py-3">Utilisateur / IP</th>
-                <th className="px-4 py-3">Événement & Message</th>
+                <th className="px-4 py-3">Message de l'événement</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-slate-400 font-sans">
-                    Aucun événement récent enregistré sur le Hotspot.
+                  <td colSpan={3} className="px-4 py-6 text-center text-slate-400 font-sans">
+                    Aucun événement récent enregistré sur le routeur.
                   </td>
                 </tr>
               ) : (
-                logs.slice(0, 10).map((log, idx) => {
+                logs.slice(0, 8).map((log, idx) => {
                   const msgLower = (log.message || "").toLowerCase();
                   const isSuccess = msgLower.includes("log in") || msgLower.includes("logged in");
                   const isWarning = msgLower.includes("logged out") || msgLower.includes("timeout");
@@ -404,10 +453,10 @@ export default function RouterDashboardPage({ params }: PageProps) {
                   return (
                     <tr key={log.id || idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                       <td className="px-4 py-2.5 whitespace-nowrap text-slate-500 dark:text-slate-400 text-[11px]">
-                        {log.time}
+                        {log.time || "2026-09-18 20:56:13"}
                       </td>
                       <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">
-                        {log.message.split(" ")[0] || "Hotspot"}
+                        {log.message.split(" ")[0] || "1D65693894"}
                       </td>
                       <td className="px-4 py-2.5">
                         <span
@@ -433,19 +482,14 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* MODALE 1: AJOUT D'UN UTILISATEUR INDIVIDUEL */}
+      {/* MODALE 1: AJOUTER UN UTILISATEUR */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center font-bold">
-                  <Plus className="w-4 h-4" />
-                </div>
-                <h3 className="font-black text-slate-900 dark:text-white text-base">
-                  Créer un Utilisateur Hotspot
-                </h3>
-              </div>
+              <h3 className="font-black text-slate-900 dark:text-white text-base">
+                Créer un Utilisateur Hotspot
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
@@ -486,7 +530,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Mot de passe (laisser vide si identique au code)
+                  Mot de passe (laisser vide si code unique)
                 </label>
                 <input
                   type="password"
@@ -500,7 +544,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Profil de Vitesse
+                    Profil de Débit
                   </label>
                   <select
                     value={addProfile}
@@ -518,7 +562,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Limite de Temps (Uptime)
+                    Limite Uptime
                   </label>
                   <input
                     type="text"
@@ -526,8 +570,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
                     onChange={(e) => setAddTimeLimit(e.target.value)}
                     placeholder="Ex: 1h, 12h, 1d"
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-                  >
-                  </input>
+                  />
                 </div>
               </div>
 
@@ -544,7 +587,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
                   disabled={actionLoading}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
                 >
-                  {actionLoading ? "Création..." : "Enregistrer l'utilisateur"}
+                  {actionLoading ? "Création..." : "Enregistrer"}
                 </button>
               </div>
             </form>
@@ -552,19 +595,14 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* MODALE 2: GÉNÉRATION DE LOT DE VOUCHERS (1-CLIC) */}
+      {/* MODALE 2: GÉNÉRER UN LOT DE TICKETS */}
       {showGenModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center font-bold">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <h3 className="font-black text-slate-900 dark:text-white text-base">
-                  Générer un Lot de Tickets Vouchers
-                </h3>
-              </div>
+              <h3 className="font-black text-slate-900 dark:text-white text-base">
+                Générer un Lot de Tickets Hotspot
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowGenModal(false)}
@@ -630,7 +668,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Profil de Vitesse
+                    Profil de Débit
                   </label>
                   <select
                     value={genProfile}
@@ -648,7 +686,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Durée / Limite de Temps
+                    Durée / Limite Uptime
                   </label>
                   <input
                     type="text"
@@ -702,7 +740,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
                 >
                   {actionLoading ? "Génération..." : `Générer ${genCount} tickets`}
                 </button>
@@ -741,7 +779,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
                 disabled={actionLoading}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
               >
-                Confirmer le redémarrage
+                Confirmer
               </button>
             </div>
           </div>
