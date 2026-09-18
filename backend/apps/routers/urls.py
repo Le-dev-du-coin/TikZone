@@ -4,7 +4,15 @@ from .views import (
     PingRouterView,
     RenewRouterView,
     RouterDetailView,
+    RouterDisconnectActiveView,
+    RouterGenerateTicketsView,
+    RouterHotspotOverviewView,
+    RouterHotspotProfilesView,
+    RouterHotspotUsersView,
     RouterListView,
+    RouterLogsView,
+    RouterRebootView,
+    RouterSystemInfoView,
     VpnSyncListView,
 )
 
@@ -15,4 +23,13 @@ urlpatterns = [
     re_path(r"^(?P<router_id>[0-9a-f-]+)/?$", RouterDetailView.as_view(), name="router-detail"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/renew/?$", RenewRouterView.as_view(), name="router-renew"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/ping/?$", PingRouterView.as_view(), name="router-ping"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/system-info/?$", RouterSystemInfoView.as_view(), name="router-system-info"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/overview/?$", RouterHotspotOverviewView.as_view(), name="router-hotspot-overview"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/users/?$", RouterHotspotUsersView.as_view(), name="router-hotspot-users"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/generate/?$", RouterGenerateTicketsView.as_view(), name="router-hotspot-generate"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/profiles/?$", RouterHotspotProfilesView.as_view(), name="router-hotspot-profiles"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/active/(?P<active_id>[^/]+)/disconnect/?$", RouterDisconnectActiveView.as_view(), name="router-disconnect-active"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/logs/?$", RouterLogsView.as_view(), name="router-logs"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/reboot/?$", RouterRebootView.as_view(), name="router-reboot"),
 ]
+

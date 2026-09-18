@@ -275,3 +275,190 @@ class VpnSyncListView(APIView):
             "count": len(peers),
             "peers": peers,
         })
+
+
+class RouterSystemInfoView(APIView):
+    """Récupère la télémétrie matérielle et système en direct du routeur MikroTik."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        info = MikrotikService.get_system_info(router)
+        return Response(info)
+
+
+class RouterHotspotOverviewView(APIView):
+    """Récupère les KPIs Hotspot (actifs, utilisateurs, profils) pour l'espace dédié."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        overview = MikrotikService.get_hotspot_overview(router)
+        return Response(overview)
+
+
+class RouterHotspotUsersView(APIView):
+    """Liste et création d'utilisateurs Hotspot individuels sur le routeur."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        users = MikrotikService.get_hotspot_users(router)
+        return Response({"count": len(users), "results": users})
+
+    def post(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        name = request.data.get("name", "").strip()
+        password = request.data.get("password", "").strip() or name
+        profile = request.data.get("profile", "default")
+        time_limit = request.data.get("time_limit", "")
+        comment = request.data.get("comment", "TikZone Ticket")
+
+        if not name:
+            return Response({"detail": "Le nom ou code ticket est requis."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            res = MikrotikService.add_user(router, name, password, profile, time_limit, comment)
+            return Response(res, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"detail": f"Erreur lors de la création : {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class RouterGenerateTicketsView(APIView):
+    """Génération par lot de vouchers Hotspot personnalisés en 1-clic."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            count = min(int(request.data.get("count", 10)), 500)
+            profile = request.data.get("profile", "default")
+            time_limit = request.data.get("time_limit", "1h")
+            prefix = request.data.get("prefix", "")
+            code_length = int(request.data.get("code_length", 6))
+            price = int(request.data.get("price", 100))
+
+            tickets = MikrotikService.generate_batch_tickets(
+                router,
+                count=count,
+                profile=profile,
+                time_limit=time_limit,
+                prefix=prefix,
+                code_length=code_length,
+                price=price,
+            )
+            return Response({
+                "detail": f"{len(tickets)} tickets générés avec succès pour '{router.name}' !",
+                "count": len(tickets),
+                "tickets": tickets,
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"detail": f"Erreur de génération : {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class RouterHotspotProfilesView(APIView):
+    """Liste des profils de bande passante et de durée du Hotspot."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        profiles = MikrotikService.get_profiles(router)
+        return Response({"count": len(profiles), "results": profiles})
+
+
+class RouterLogsView(APIView):
+    """Récupère le journal d'activité (Hotspot Log & System Log) en temps réel."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        limit = int(request.query_params.get("limit", 50))
+        logs = MikrotikService.get_logs(router, limit=limit)
+        return Response({"count": len(logs), "results": logs})
+
+
+class RouterDisconnectActiveView(APIView):
+    """Déconnexion forcée d'une session Hotspot active."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, router_id, active_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            MikrotikService.disconnect_active_user(router, active_id)
+            return Response({"detail": "Utilisateur déconnecté avec succès."})
+        except Exception as e:
+            return Response({"detail": f"Erreur : {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class RouterRebootView(APIView):
+    """Redémarrage à distance sécurisé du routeur MikroTik."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        MikrotikService.reboot_router(router)
+        return Response({"detail": f"Ordre de redémarrage envoyé avec succès au routeur '{router.name}'."})
+

@@ -986,6 +986,18 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<8)"]
 
 [[package]]
+name = "routeros-api"
+version = "0.21.0"
+description = "Python API to RouterBoard devices produced by MikroTik."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "routeros_api-0.21.0-py2.py3-none-any.whl", hash = "sha256:4189c11bdeae0d8d654b1f1212f3654a54f0df8e4ec0bcb4d5bc31303a7f76d0"},
+    {file = "routeros_api-0.21.0.tar.gz", hash = "sha256:0d37452a4ff85cd476dca392068d7d76ba430c9b055c39d8dabc5930a997d82d"},
+]
+
+[[package]]
 name = "sqlparse"
 version = "0.6.0"
 description = "A non-validating SQL parser."
@@ -1047,4 +1059,4 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "a934ddfc57a6f4d18290d0eb36ea516fa83e30e12666caec15e786472c9c68e7"
+content-hash = "3f9b665c80f346f17843ee86b2bc0a75bb99e7166ce63ad07e3a39eadcb025e0"

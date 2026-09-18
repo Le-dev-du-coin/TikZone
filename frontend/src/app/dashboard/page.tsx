@@ -22,6 +22,7 @@ import {
   Server,
   ShieldCheck,
   Trash2,
+  Wifi,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -361,15 +362,24 @@ export default function ClientDashboardPage() {
                       <span>Ajouter Routeur</span>
                     </Link>
 
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMikhmonModal(instance)}
-                      className="flex-1 lg:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer"
-                      title="Ouvrir l'assistant de connexion et l'instance Mikhmon"
-                    >
-                      <span>Ouvrir Mikhmon</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
+                    {routers.length > 0 ? (
+                      <Link
+                        href={`/dashboard/routers/${routers[0].id}`}
+                        className="flex-1 lg:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+                        title="Ouvrir l'Espace Hotspot de ce routeur"
+                      >
+                        <Wifi className="w-3.5 h-3.5" />
+                        <span>Espace Hotspot</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/dashboard/routers/new?space=${instance.id}`}
+                        className="flex-1 lg:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Rattacher Routeur</span>
+                      </Link>
+                    )}
 
                     <button
                       type="button"
@@ -447,7 +457,15 @@ export default function ClientDashboardPage() {
                             </div>
 
                             {/* Actions Responsive Layout */}
-                            <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <Link
+                                href={`/dashboard/routers/${router.id}`}
+                                className="col-span-4 sm:flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                              >
+                                <Wifi className="w-3.5 h-3.5" />
+                                <span>Gérer le Hotspot</span>
+                              </Link>
+
                               <button
                                 type="button"
                                 onClick={() =>
@@ -457,9 +475,9 @@ export default function ClientDashboardPage() {
                                       `/interface l2tp-client add connect-to=vpn.tikzone.net name=${router.name}-VPN user=${router.name} password=secret disabled=no\n/ip firewall filter add action=accept chain=input in-interface=${router.name}-VPN comment="TikZone VPN"`
                                   )
                                 }
-                                className="col-span-3 sm:flex-1 py-2 px-3 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-xl transition-colors cursor-pointer text-center"
+                                className="col-span-2 sm:col-auto py-2 px-2.5 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-xl transition-colors cursor-pointer text-center"
                               >
-                                Script MikroTik
+                                Script
                               </button>
 
                               <button

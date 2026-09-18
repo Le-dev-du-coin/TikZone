@@ -179,6 +179,89 @@ export const api = {
     return data;
   },
 
+  // === NATIVE ROUTEROS ENGINE (HOTSPOT & TÉLÉMÉTRIE) ===
+  async getRouterSystemInfo(routerId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/system-info/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur de télémétrie système");
+    return await res.json();
+  },
+
+  async getRouterHotspotOverview(routerId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/overview/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur de récupération Hotspot");
+    return await res.json();
+  },
+
+  async getRouterHotspotUsers(routerId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/users/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur des utilisateurs Hotspot");
+    return await res.json();
+  },
+
+  async addRouterHotspotUser(routerId: string, data: { name: string; password?: string; profile?: string; time_limit?: string; comment?: string }) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/users/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur de création de l'utilisateur");
+    return result;
+  },
+
+  async generateRouterTickets(routerId: string, data: { count: number; profile?: string; time_limit?: string; prefix?: string; code_length?: number; price?: number }) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/generate/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur de génération des tickets");
+    return result;
+  },
+
+  async getRouterProfiles(routerId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur des profils Hotspot");
+    return await res.json();
+  },
+
+  async getRouterLogs(routerId: string, limit = 50) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/logs/?limit=${limit}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur des logs Hotspot");
+    return await res.json();
+  },
+
+  async disconnectActiveUser(routerId: string, activeId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/active/${encodeURIComponent(activeId)}/disconnect/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur lors de la déconnexion");
+    return result;
+  },
+
+  async rebootRouter(routerId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/reboot/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur lors du redémarrage");
+    return result;
+  },
+
   // === WALLET ===
   async getWallet(): Promise<WalletData> {
     const res = await fetch(`${API_BASE}/billing/wallet/`, {
@@ -211,3 +294,4 @@ export const api = {
     return data;
   },
 };
+
