@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { walletEvents } from "@/lib/wallet-events";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function DashboardLayout({
@@ -15,6 +15,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isLoading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -73,6 +74,18 @@ export default function DashboardLayout({
 
   if (!user) {
     return null;
+  }
+
+  // Espace Routeur Autonome : Pas de sidebar TikZone globale, pas de header global !
+  const isRouterWorkspace =
+    pathname.startsWith("/dashboard/routers/") && !pathname.endsWith("/new");
+
+  if (isRouterWorkspace) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+        {children}
+      </div>
+    );
   }
 
   return (

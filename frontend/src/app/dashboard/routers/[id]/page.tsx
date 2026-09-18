@@ -303,7 +303,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* SECTION 3: CARTES STATISTIQUES HOTSPOT & ACTIONS (Design Sobre & Épuré) */}
+      {/* SECTION 3: CARTES STATISTIQUES HOTSPOT VIBRANTES & TACTILES (Mobile-First) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -312,51 +312,51 @@ export default function RouterDashboardPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* 1. Carte Sessions Actives */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* 1. Carte Bleue Vibrante : Sessions Actives */}
           <Link
             href={`/dashboard/routers/${routerId}/active`}
-            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col justify-between group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Sessions Actives</span>
-              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Radio className="w-4 h-4" />
+              <span className="text-[11px] sm:text-xs font-bold text-blue-100/90">Sessions Actives</span>
+              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Radio className="w-4 h-4 text-white" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 {hotspot?.active_count ?? 44}
               </div>
-              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Connectés en direct</span>
+              <p className="text-[10px] sm:text-[11px] text-emerald-300 font-bold mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>En direct</span>
               </p>
             </div>
           </Link>
 
-          {/* 2. Carte Utilisateurs Enregistrés */}
+          {/* 2. Carte Verte Vibrante : Utilisateurs Enregistrés */}
           <Link
             href={`/dashboard/routers/${routerId}/users`}
-            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col justify-between group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Total Utilisateurs</span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Users className="w-4 h-4" />
+              <span className="text-[11px] sm:text-xs font-bold text-emerald-100/90">Total Utilisateurs</span>
+              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Users className="w-4 h-4 text-white" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 {hotspot?.total_users_count ?? 389}
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                Comptes & tickets en mémoire
+              <p className="text-[10px] sm:text-[11px] text-emerald-200 mt-1">
+                Tickets & comptes
               </p>
             </div>
           </Link>
 
-          {/* 3. Bouton d'Action : + Ajouter Ticket */}
+          {/* 3. Carte Ambre Vibrante : + Ajouter un Ticket */}
           <button
             type="button"
             onClick={() => {
@@ -364,25 +364,25 @@ export default function RouterDashboardPage({ params }: PageProps) {
               setActionError(null);
               setShowAddModal(true);
             }}
-            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-amber-500/50 dark:hover:border-amber-500/50 transition-all flex flex-col justify-between text-left group cursor-pointer"
+            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col justify-between text-left group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Création Rapide</span>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Plus className="w-4 h-4" />
+              <span className="text-[11px] sm:text-xs font-bold text-amber-100/90">Création</span>
+              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-4 h-4 text-white" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-base font-black text-slate-900 dark:text-white">
-                + Ajouter un Ticket
+              <div className="text-sm sm:text-base font-black text-white leading-tight">
+                + Ajouter Ticket
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Créer un utilisateur individuel
+              <p className="text-[10px] sm:text-[11px] text-amber-100/80 mt-0.5">
+                Utilisateur unique
               </p>
             </div>
           </button>
 
-          {/* 4. Bouton d'Action : ⚡ Générer un Lot */}
+          {/* 4. Carte Rose/Rouge Vibrante : ⚡ Générer un Lot */}
           <button
             type="button"
             onClick={() => {
@@ -390,20 +390,20 @@ export default function RouterDashboardPage({ params }: PageProps) {
               setActionError(null);
               setShowGenModal(true);
             }}
-            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-rose-500/50 dark:hover:border-rose-500/50 transition-all flex flex-col justify-between text-left group cursor-pointer"
+            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-rose-600 to-pink-600 text-white shadow-lg shadow-rose-500/20 hover:shadow-xl hover:shadow-rose-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col justify-between text-left group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Production de Masse</span>
-              <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Zap className="w-4 h-4" />
+              <span className="text-[11px] sm:text-xs font-bold text-rose-100/90">Impression</span>
+              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Zap className="w-4 h-4 text-white" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-base font-black text-slate-900 dark:text-white">
-                ⚡ Générer un Lot
+              <div className="text-sm sm:text-base font-black text-white leading-tight">
+                ⚡ Générer Lot
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Coupons & impression rapide
+              <p className="text-[10px] sm:text-[11px] text-rose-100/80 mt-0.5">
+                Coupons par lot
               </p>
             </div>
           </button>
