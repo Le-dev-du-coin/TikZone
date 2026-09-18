@@ -186,10 +186,10 @@ export default function ClientDashboardPage() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Espaces Mikhmon
+              Espaces Hotspot
             </span>
             <div className="text-2xl font-black text-slate-900 dark:text-white">{instances.length}</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Sous-domaines opérationnels</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Réseaux MikroTik configurés</p>
           </div>
           <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
             <Server className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -283,17 +283,17 @@ export default function ClientDashboardPage() {
               <Search className="w-7 h-7" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-bold text-slate-900 dark:text-white text-base">Aucun espace trouvé</h3>
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">Aucun routeur connecté</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Créez un nouvel espace pour commencer à relier vos routeurs MikroTik.
+                Raccordez votre premier boîtier MikroTik pour démarrer la supervision et générer des tickets.
               </p>
             </div>
             <Link
-              href="/dashboard/mikhmon/new"
+              href="/dashboard/routers/new"
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Acheter un Espace (1 000 CFA)</span>
+              <span>Connecter un Routeur MikroTik (500 CFA/mois)</span>
             </Link>
           </div>
         ) : (
