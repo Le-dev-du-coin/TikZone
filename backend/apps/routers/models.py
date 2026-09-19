@@ -161,7 +161,12 @@ class VpnCredential(models.Model):
         vpn_user = f"{router.name.lower()}_{router.id.hex[:6]}"
         vpn_password = secrets.token_hex(16)
         wg_priv, wg_pub = generate_wireguard_keypair()
-        server_host = getattr(settings, "VPN_SERVER_HOST", f"vpn.{getattr(settings, 'BASE_DOMAIN', 'mikroot.app')}")
+        base_domain = getattr(settings, "BASE_DOMAIN", "tikzone.net")
+        server_host = getattr(settings, "VPN_SERVER_HOST", f"vpn.{base_domain}")
+        # Sécurité Senior : Si une IPv6 brute a été configurée par mégarde (présence de ':'),
+        # on bascule impérativement sur le nom de domaine DNS résolu en IPv4
+        if not server_host or ":" in server_host:
+            server_host = f"vpn.{base_domain}"
 
         return cls.objects.create(
             router=router,
@@ -180,6 +185,14 @@ class VpnCredential(models.Model):
         instance = self.router.mikhmon_instance
         is_v7 = instance.routeros_version == MikhmonInstance.RouterOSVersion.V7
 
+        # Assainissement de l'endpoint : Toujours un domaine ou IPv4 valide
+        base_domain = getattr(settings, "BASE_DOMAIN", "tikzone.net")
+        endpoint_host = self.vpn_server
+        if not endpoint_host or ":" in endpoint_host:
+            endpoint_host = getattr(settings, "VPN_SERVER_HOST", f"vpn.{base_domain}")
+            if ":" in endpoint_host:
+                endpoint_host = f"vpn.{base_domain}"
+
         if is_v7:
             # === SCRIPT ROUTEROS 7 (WIREGUARD NAT TRAVERSAL) ===
             vpn_subnet = getattr(settings, "VPN_SUBNET", "172.29.88.0/24")
@@ -197,7 +210,7 @@ class VpnCredential(models.Model):
                 f"/ip address remove [find interface=wg-mikroot]\n"
                 f"/ip address add address={self.assigned_ip}/24 interface=wg-tikzone\n"
                 f"/interface wireguard peers remove [find interface=wg-tikzone]\n"
-                f"/interface wireguard peers add interface=wg-tikzone endpoint-address={self.vpn_server} endpoint-port={server_port} public-key=\"{server_pubkey}\" allowed-address={vpn_subnet} persistent-keepalive=25s comment=\"TikZone VPN Server\"\n"
+                f"/interface wireguard peers add interface=wg-tikzone endpoint-address={endpoint_host} endpoint-port={server_port} public-key=\"{server_pubkey}\" allowed-address={vpn_subnet} persistent-keepalive=25s comment=\"TikZone VPN Server\"\n"
                 f"/ip service set api disabled=no port=8728 address=\"\"\n"
                 f"/ip service set winbox disabled=no port=8291 address=\"\"\n"
                 f"/ip firewall filter remove [find comment=\"TikZone VPN API\"]\n"
@@ -209,7 +222,7 @@ class VpnCredential(models.Model):
             return (
                 f"/interface l2tp-client remove [find name=tikzone-vpn]\n"
                 f"/interface l2tp-client remove [find name=mikroot-vpn]\n"
-                f"/interface l2tp-client add connect-to={self.vpn_server} name=tikzone-vpn user=\"{self.vpn_user}\" password=\"{self.vpn_password}\" disabled=no add-default-route=no use-ipsec=yes ipsec-secret=\"{self.vpn_password}\" comment=\"TikZone VPN\"\n"
+                f"/interface l2tp-client add connect-to={endpoint_host} name=tikzone-vpn user=\"{self.vpn_user}\" password=\"{self.vpn_password}\" disabled=no add-default-route=no use-ipsec=yes ipsec-secret=\"{self.vpn_password}\" comment=\"TikZone VPN\"\n"
                 f"/ip service set api disabled=no port=8728 address=\"\"\n"
                 f"/ip service set winbox disabled=no port=8291 address=\"\"\n"
                 f"/ip firewall filter remove [find comment=\"TikZone VPN API\"]\n"

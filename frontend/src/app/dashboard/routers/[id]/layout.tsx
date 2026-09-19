@@ -78,7 +78,9 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
     }
   };
 
-  const winboxAddress = `${router?.vpn?.vpn_server || "vpn.tikzone.net"}:${router?.vpn?.winbox_port || 51001}`;
+  const rawVpnServer = router?.vpn?.vpn_server;
+  const winboxHost = rawVpnServer && !rawVpnServer.includes(":") ? rawVpnServer : "vpn.tikzone.net";
+  const winboxAddress = `${winboxHost}:${router?.vpn?.winbox_port || 51001}`;
 
   const copyWinbox = () => {
     navigator.clipboard.writeText(winboxAddress);

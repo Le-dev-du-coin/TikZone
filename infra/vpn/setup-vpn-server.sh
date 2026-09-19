@@ -41,9 +41,9 @@ sed -i '/^#net.ipv4.ip_forward=1/c\net.ipv4.ip_forward=1' /etc/sysctl.conf
 sed -i '/^net.ipv4.ip_forward=0/c\net.ipv4.ip_forward=1' /etc/sysctl.conf
 sysctl -p /etc/sysctl.conf
 
-# 3. Détection de l'interface réseau publique principale
+# 3. Détection de l'interface réseau publique principale (IPv4 obligatoire)
 MAIN_IFACE=$(ip route get 8.8.8.8 | awk -- '{printf $5}')
-SERVER_IP=$(curl -s ifconfig.me || hostname -I | awk '{print $1}')
+SERVER_IP=$(curl -4 -s ifconfig.me || curl -4 -s icanhazip.com || ip route get 8.8.8.8 | awk '{print $7}')
 echo "[+] Interface réseau publique détectée : $MAIN_IFACE ($SERVER_IP)"
 
 # 4. Génération des Clés WireGuard pour le Serveur
@@ -140,6 +140,7 @@ echo " Port WireGuard (UDP)     : 51820"
 echo " Clé Publique WireGuard   : $SERVER_PUBKEY"
 echo ""
 echo "-> À copier dans le fichier .env du Backend Django :"
-echo "VPN_SERVER_HOST=$SERVER_IP"
+echo "VPN_SERVER_HOST=vpn.tikzone.net"
+echo "# Alternative IPv4 directe si DNS non configuré : VPN_SERVER_HOST=$SERVER_IP"
 echo "VPN_WG_SERVER_PUBKEY=$SERVER_PUBKEY"
 echo "==========================================================="

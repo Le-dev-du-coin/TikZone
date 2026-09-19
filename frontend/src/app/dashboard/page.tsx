@@ -30,8 +30,30 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function ClientDashboardPage() {
-  const [instances, setInstances] = useState<InstanceData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [instances, setInstances] = useState<InstanceData[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_instances");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("tikzone_cached_instances");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return false;
+        } catch {}
+      }
+    }
+    return true;
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<"ALL" | "ACTIVE" | "EXPIRING">("ALL");
   const [pingStatus, setPingStatus] = useState<Record<string, string>>({});
@@ -62,13 +84,17 @@ export default function ClientDashboardPage() {
   });
 
   const loadData = async () => {
-    setIsLoading(true);
     try {
       const [data, wallet] = await Promise.all([
         api.getInstances(),
         api.getWallet().catch(() => null),
       ]);
-      setInstances(data || []);
+      if (Array.isArray(data)) {
+        setInstances(data);
+        try {
+          localStorage.setItem("tikzone_cached_instances", JSON.stringify(data));
+        } catch {}
+      }
       if (wallet && typeof wallet.balance === "number") {
         setBalance(wallet.balance);
         try {

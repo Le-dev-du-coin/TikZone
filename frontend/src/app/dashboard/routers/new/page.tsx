@@ -30,9 +30,43 @@ function NewRouterForm() {
   const searchParams = useSearchParams();
   const initialSpace = searchParams.get("space") || "";
 
-  const [instances, setInstances] = useState<InstanceData[]>([]);
-  const [loadingInstances, setLoadingInstances] = useState(true);
-  const [selectedMikhmon, setSelectedMikhmon] = useState(initialSpace);
+  const [instances, setInstances] = useState<InstanceData[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_instances");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [loadingInstances, setLoadingInstances] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("tikzone_cached_instances");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return false;
+        } catch {}
+      }
+    }
+    return true;
+  });
+  const [selectedMikhmon, setSelectedMikhmon] = useState<string>(() => {
+    if (initialSpace) return initialSpace;
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_instances");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed[0].id;
+        }
+      } catch {}
+    }
+    return "";
+  });
   const [routerName, setRouterName] = useState("");
   const [autoRenew, setAutoRenew] = useState(true);
   const [balance, setBalance] = useState<number>(() => {
@@ -62,14 +96,20 @@ function NewRouterForm() {
     async function loadData() {
       try {
         const [instList, wallet] = await Promise.all([api.getInstances(), api.getWallet()]);
-        if (instList && instList.length > 0) {
+        if (Array.isArray(instList)) {
           setInstances(instList);
-          if (!selectedMikhmon) {
+          try {
+            localStorage.setItem("tikzone_cached_instances", JSON.stringify(instList));
+          } catch {}
+          if (!selectedMikhmon && instList.length > 0) {
             setSelectedMikhmon(instList[0].id);
           }
         }
         if (wallet && typeof wallet.balance === "number") {
           setBalance(wallet.balance);
+          try {
+            localStorage.setItem("mikroot_last_balance", String(wallet.balance));
+          } catch {}
         }
       } catch {
         // Ignorer
@@ -100,13 +140,19 @@ function NewRouterForm() {
       const vpnCred = res.router.vpn;
       const targetInst = instances.find((i) => i.id === selectedMikhmon);
 
+      // Normalisation défensive : Toujours afficher le domaine vpn.tikzone.net si une IPv6 arrive
+      let serverDisplay = vpnCred ? vpnCred.vpn_server : "vpn.tikzone.net";
+      if (!serverDisplay || serverDisplay.includes(":")) {
+        serverDisplay = "vpn.tikzone.net";
+      }
+
       setCreatedSuccess({
         routerName: res.router.name,
         spaceName: targetInst ? targetInst.name : "votre espace",
         script: res.script,
         apiPort: vpnCred ? vpnCred.api_port : 41009,
         winboxPort: vpnCred ? vpnCred.winbox_port : 51009,
-        vpnServer: vpnCred ? vpnCred.vpn_server : "vpn.tikzone.net",
+        vpnServer: serverDisplay,
         newBalance: res.new_balance ?? balanceAfter,
       });
 
