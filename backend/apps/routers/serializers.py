@@ -32,6 +32,7 @@ class RouterSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "hotspot_name",
             "status",
             "mikhmon_instance",
             "mikhmon_name",

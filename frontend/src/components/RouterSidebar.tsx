@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
+  Check,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -12,6 +13,7 @@ import {
   Gauge,
   HardDrive,
   LayoutDashboard,
+  Pencil,
   Printer,
   Radio,
   ScrollText,
@@ -24,22 +26,47 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { api } from "@/lib/api";
 
 interface RouterSidebarProps {
   routerId: string;
   routerName?: string;
+  hotspotName?: string;
   isOpen?: boolean;
   onClose?: () => void;
+  onRouterUpdated?: (updated: any) => void;
 }
 
 export default function RouterSidebar({
   routerId,
   routerName = "Routeur MikroTik",
+  hotspotName = "",
   isOpen = false,
   onClose,
+  onRouterUpdated,
 }: RouterSidebarProps) {
   const pathname = usePathname();
   const [hotspotOpen, setHotspotOpen] = useState(true);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [customName, setCustomName] = useState(hotspotName || routerName);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customName.trim()) return;
+    setIsSaving(true);
+    try {
+      const res = await api.updateRouter(routerId, { hotspot_name: customName.trim() });
+      if (onRouterUpdated) onRouterUpdated(res.router);
+      setIsEditingName(false);
+    } catch (err: any) {
+      alert("Erreur lors de la modification : " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const displayName = hotspotName || routerName;
 
   const basePath = `/dashboard/routers/${routerId}`;
 
@@ -107,23 +134,43 @@ export default function RouterSidebar({
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Router Header Badge */}
+        {/* Router Header Badge (Nom Programmable de l'Espace) */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 shrink-0">
               <Wifi className="w-4 h-4" />
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                Espace Routeur
-              </span>
-              <h2 className="font-black text-sm text-slate-900 dark:text-white truncate">
-                {routerName}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                  Espace Routeur
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomName(displayName);
+                    setIsEditingName(true);
+                  }}
+                  className="p-0.5 rounded text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                  title="Personnaliser le nom commercial de cet espace"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              </div>
+              <h2
+                onClick={() => {
+                  setCustomName(displayName);
+                  setIsEditingName(true);
+                }}
+                className="font-black text-sm text-slate-900 dark:text-white truncate cursor-pointer hover:text-blue-600 transition-colors"
+                title="Cliquez pour renommer"
+              >
+                {displayName}
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <ThemeToggle />
             <button
               onClick={onClose}
@@ -133,6 +180,64 @@ export default function RouterSidebar({
             </button>
           </div>
         </div>
+
+        {/* Modal d'édition du Nom Programmable */}
+        {isEditingName && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                  <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Nom de l'Espace Hotspot</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(false)}
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveName} className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                    Nom commercial affiché (ex: Hotspot Marché, Wi-Fi Hôtel)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="Ex: Hotspot Zone Sud"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Ce nom apparaîtra dans votre menu et sur vos tickets imprimés.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingName(false)}
+                    className="px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{isSaving ? "Enregistrement..." : "Enregistrer"}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Back to Global Hub */}
         <div className="p-3">

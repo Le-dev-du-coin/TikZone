@@ -56,6 +56,7 @@ class Router(models.Model):
         related_name="routers",
     )
     name = models.CharField("Nom du Routeur", max_length=100)
+    hotspot_name = models.CharField("Nom Commercial Hotspot", max_length=100, blank=True, default="")
     status = models.CharField(
         "Statut",
         max_length=20,

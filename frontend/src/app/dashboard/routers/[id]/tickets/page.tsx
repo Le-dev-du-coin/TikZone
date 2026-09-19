@@ -38,7 +38,17 @@ export default function RouterTicketsPage({ params }: PageProps) {
   const [tickets, setTickets] = useState<any[]>([]);
   const [printFormat, setPrintFormat] = useState<"thermal" | "grid">("grid");
 
+  const [routerData, setRouterData] = useState<any>(null);
+
   useEffect(() => {
+    api
+      .getRouters()
+      .then((list) => {
+        const found = list.find((r) => r.id === routerId);
+        if (found) setRouterData(found);
+      })
+      .catch(() => {});
+
     api
       .getRouterProfiles(routerId)
       .then((res) => setProfiles(res.results || []))
@@ -310,56 +320,62 @@ export default function RouterTicketsPage({ params }: PageProps) {
           {printFormat === "grid" ? (
             /* Grille A4 Découpable (4 colonnes, Standard Mikhmon 27mm) */
             <div className="vouchers-grid grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white p-3 sm:p-5 rounded-2xl border border-slate-200 text-slate-950">
-              {tickets.map((t, idx) => (
-                <div
-                  key={idx}
-                  className="voucher-card border-[1.5px] border-slate-900 rounded-md p-2 bg-white text-slate-950 flex flex-col justify-between select-none"
-                  style={{ minHeight: "105px" }}
-                >
-                  {/* Header */}
-                  <div>
-                    <div className="flex items-center justify-between font-black text-[11px] uppercase tracking-tight">
-                      <span className="truncate pr-1">TIKZONE HOTSPOT</span>
-                      <span className="shrink-0 text-[10px]">[{idx + 1}]</span>
+              {tickets.map((t, idx) => {
+                const hotspotTitle = (routerData?.hotspot_name || routerData?.name || "TIKZONE HOTSPOT").toUpperCase();
+                return (
+                  <div
+                    key={idx}
+                    className="voucher-card border-[1.5px] border-slate-900 rounded-md p-2 bg-white text-slate-950 flex flex-col justify-between select-none"
+                    style={{ minHeight: "105px" }}
+                  >
+                    {/* Header */}
+                    <div>
+                      <div className="flex items-center justify-between font-black text-[11px] uppercase tracking-tight">
+                        <span className="truncate pr-1">{hotspotTitle}</span>
+                        <span className="shrink-0 text-[10px]">[{idx + 1}]</span>
+                      </div>
+                      <div className="border-b-[1.5px] border-slate-900 my-1"></div>
                     </div>
-                    <div className="border-b-[1.5px] border-slate-900 my-1"></div>
-                  </div>
 
-                  {/* Body : Code Ticket en grand */}
-                  <div className="my-auto py-1 text-center space-y-0.5">
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-700">
-                      Code Ticket
+                    {/* Body : Code Ticket en grand */}
+                    <div className="my-auto py-1 text-center space-y-0.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-700">
+                        Code Ticket
+                      </div>
+                      <div className="border border-slate-900 rounded px-2 py-0.5 text-sm font-black font-mono tracking-widest bg-slate-50">
+                        {t.code}
+                      </div>
                     </div>
-                    <div className="border border-slate-900 rounded px-2 py-0.5 text-sm font-black font-mono tracking-widest bg-slate-50">
-                      {t.code}
-                    </div>
-                  </div>
 
-                  {/* Footer : Durée & Prix */}
-                  <div className="border border-slate-900 rounded px-1 py-0.5 text-center text-[10px] font-black uppercase tracking-tight bg-slate-50 mt-1 truncate">
-                    Pass {t.time_limit} - {t.price} FCFA
+                    {/* Footer : Durée & Prix */}
+                    <div className="border border-slate-900 rounded px-1 py-0.5 text-center text-[10px] font-black uppercase tracking-tight bg-slate-50 mt-1 truncate">
+                      Pass {t.time_limit} - {t.price} FCFA
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             /* Format Rouleau Thermique POS 58mm / 80mm */
             <div className="pos-container max-w-xs mx-auto space-y-3 bg-white p-4 rounded-xl border border-slate-200 text-slate-900 font-mono">
-              {tickets.map((t, idx) => (
-                <div
-                  key={idx}
-                  className="pos-card p-3 border border-slate-400 rounded-lg text-center space-y-1.5"
-                >
-                  <p className="text-xs font-black uppercase">*** TIKZONE HOTSPOT ***</p>
-                  <p className="text-[11px]">Pass Internet : {t.time_limit}</p>
-                  <p className="text-[11px]">Prix : {t.price} FCFA</p>
-                  <div className="border-t border-b border-dashed border-slate-400 py-1.5 my-1">
-                    <p className="text-[9px] uppercase text-slate-500 font-sans">CODE D'ACCÈS :</p>
-                    <p className="text-base font-black tracking-widest">{t.code}</p>
+              {tickets.map((t, idx) => {
+                const hotspotTitle = (routerData?.hotspot_name || routerData?.name || "TIKZONE HOTSPOT").toUpperCase();
+                return (
+                  <div
+                    key={idx}
+                    className="pos-card p-3 border border-slate-400 rounded-lg text-center space-y-1.5"
+                  >
+                    <p className="text-xs font-black uppercase">*** {hotspotTitle} ***</p>
+                    <p className="text-[11px]">Pass Internet : {t.time_limit}</p>
+                    <p className="text-[11px]">Prix : {t.price} FCFA</p>
+                    <div className="border-t border-b border-dashed border-slate-400 py-1.5 my-1">
+                      <p className="text-[9px] uppercase text-slate-500 font-sans">CODE D'ACCÈS :</p>
+                      <p className="text-base font-black tracking-widest">{t.code}</p>
+                    </div>
+                    <p className="text-[8.5px] text-slate-500">Connectez-vous au WiFi et saisissez votre code.</p>
                   </div>
-                  <p className="text-[8.5px] text-slate-500">Connectez-vous au WiFi et saisissez votre code.</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -115,6 +115,34 @@ class RouterDetailView(APIView):
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
         return Response(RouterSerializer(router).data)
 
+    def patch(self, request, router_id):
+        try:
+            router = Router.objects.get(id=router_id, user=request.user)
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        new_name = request.data.get("name")
+        if new_name is not None:
+            new_name = new_name.strip()
+            if new_name and new_name.lower() != router.name.lower():
+                # Vérifier l'unicité
+                if Router.objects.filter(mikhmon_instance=router.mikhmon_instance, name__iexact=new_name).exclude(id=router.id).exists():
+                    return Response(
+                        {"detail": f"Un routeur nommé '{new_name}' existe déjà dans cet espace."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                router.name = new_name
+
+        new_hotspot_name = request.data.get("hotspot_name")
+        if new_hotspot_name is not None:
+            router.hotspot_name = new_hotspot_name.strip()
+
+        router.save()
+        return Response({
+            "detail": "Paramètres du routeur mis à jour avec succès !",
+            "router": RouterSerializer(router).data,
+        })
+
     def delete(self, request, router_id):
         try:
             router = Router.objects.get(id=router_id, user=request.user)

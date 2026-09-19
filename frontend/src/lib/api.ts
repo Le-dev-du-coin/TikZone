@@ -30,6 +30,7 @@ export interface InstanceData {
 export interface RouterData {
   id: string;
   name: string;
+  hotspot_name?: string;
   status: "ACTIVE" | "EXPIRED" | "SUSPENDED";
   mikhmon_instance: string;
   mikhmon_name?: string;
@@ -165,6 +166,19 @@ export const api = {
       throw new Error(data.detail || "Erreur lors de la suppression du routeur");
     }
     return data;
+  },
+
+  async updateRouter(routerId: string, data: { name?: string; hotspot_name?: string }) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) {
+      throw new Error(resData.detail || "Erreur lors de la mise à jour du routeur");
+    }
+    return resData;
   },
 
   async pingRouter(routerId: string) {

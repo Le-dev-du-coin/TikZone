@@ -14,6 +14,7 @@ import {
   HardDrive,
   Info,
   KeyRound,
+  Pencil,
   Plus,
   Radio,
   RefreshCw,
@@ -47,6 +48,9 @@ export default function RouterDashboardPage({ params }: PageProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [copiedWinbox, setCopiedWinbox] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
+  const [isEditingHotspotName, setIsEditingHotspotName] = useState(false);
+  const [hotspotNameInput, setHotspotNameInput] = useState("");
+  const [isSavingHotspotName, setIsSavingHotspotName] = useState(false);
 
   // Modales
   const [showAddModal, setShowAddModal] = useState(false);
@@ -171,7 +175,23 @@ export default function RouterDashboardPage({ params }: PageProps) {
     setTimeout(() => setCopiedWinbox(false), 2000);
   };
 
+  const handleSaveHotspotName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hotspotNameInput.trim()) return;
+    setIsSavingHotspotName(true);
+    try {
+      const res = await api.updateRouter(routerId, { hotspot_name: hotspotNameInput.trim() });
+      setRouter(res.router);
+      setIsEditingHotspotName(false);
+    } catch (err: any) {
+      alert("Erreur lors de la modification : " + err.message);
+    } finally {
+      setIsSavingHotspotName(false);
+    }
+  };
+
   const isOnline = telemetry?.online ?? false;
+  const routerDisplayName = router?.hotspot_name || router?.name || "Routeur MikroTik";
 
   return (
     <div className="space-y-6">
@@ -183,8 +203,19 @@ export default function RouterDashboardPage({ params }: PageProps) {
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                {router?.name || "Routeur MikroTik"}
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                <span>{routerDisplayName}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHotspotNameInput(router?.hotspot_name || router?.name || "");
+                    setIsEditingHotspotName(true);
+                  }}
+                  className="p-1 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Personnaliser le nom commercial de ce Hotspot"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
               </h1>
               <span
                 className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
@@ -199,6 +230,12 @@ export default function RouterDashboardPage({ params }: PageProps) {
             </div>
 
             <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              {router?.hotspot_name && (
+                <>
+                  <span>Matériel : <strong className="font-mono text-slate-700 dark:text-slate-200">{router.name}</strong></span>
+                  <span>•</span>
+                </>
+              )}
               <span>Tunnel WireGuard : <strong className="font-mono text-slate-700 dark:text-slate-200">{router?.vpn?.assigned_ip || "172.29.88.x"}</strong></span>
               <span>•</span>
               <span>Port API Distant : <strong className="font-mono text-slate-700 dark:text-slate-200">{router?.vpn?.api_port || 41005}</strong></span>

@@ -56,8 +56,10 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
       <RouterSidebar
         routerId={routerId}
         routerName={router?.name || "Routeur MikroTik"}
+        hotspotName={router?.hotspot_name || ""}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onRouterUpdated={(updated) => setRouter(updated)}
       />
 
       {/* Main Workspace Area (offset by 72 on desktop, full width on mobile) */}
