@@ -210,44 +210,44 @@ export default function ClientDashboardPage() {
         </div>
       )}
 
-      {/* KPI Header */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Espaces Hotspot
+      {/* KPI Header - Ultra compact & responsive */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-2.5 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block truncate">
+              Espaces
             </span>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">{instances.length}</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Réseaux MikroTik configurés</p>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{instances.length}</div>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Réseaux configurés</p>
           </div>
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
-            <Server className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0 self-end sm:self-center">
+            <Server className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Routeurs Connectés
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-2.5 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block truncate">
+              Routeurs
             </span>
-            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{totalRoutersCount}</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Tunnels VPN RouterOS 7 actifs</p>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">{totalRoutersCount}</div>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Tunnels VPN actifs</p>
           </div>
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
-            <RouterIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 self-end sm:self-center">
+            <RouterIcon className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Renouvellements (&lt; 7j)
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-2.5 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block truncate">
+              Renouveler
             </span>
-            <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{expiringRoutersCount}</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">À prolonger prochainement</p>
+            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">{expiringRoutersCount}</div>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">&lt; 7 jours restants</p>
           </div>
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
-            <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0 self-end sm:self-center">
+            <Clock className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
@@ -500,7 +500,7 @@ export default function ClientDashboardPage() {
                                       `/interface l2tp-client add connect-to=vpn.tikzone.net name=${router.name}-VPN user=${router.name} password=secret disabled=no\n/ip firewall filter add action=accept chain=input in-interface=${router.name}-VPN comment="TikZone VPN"`
                                   )
                                 }
-                                className="col-span-2 sm:col-auto py-2 px-2.5 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-xl transition-colors cursor-pointer text-center"
+                                className="col-span-1 sm:col-auto py-2 px-2 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-[11px] sm:text-xs rounded-xl transition-colors cursor-pointer text-center"
                               >
                                 Script
                               </button>
@@ -508,7 +508,7 @@ export default function ClientDashboardPage() {
                               <button
                                 type="button"
                                 onClick={() => setRenewTarget({ id: router.id, name: router.name })}
-                                className="py-2 px-2.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold text-xs rounded-xl transition-colors cursor-pointer text-center"
+                                className="col-span-1 sm:col-auto py-2 px-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] sm:text-xs rounded-xl transition-colors cursor-pointer text-center"
                                 title="Prolonger de 30 jours (500 FCFA)"
                               >
                                 +30j
@@ -518,15 +518,15 @@ export default function ClientDashboardPage() {
                                 type="button"
                                 onClick={() => handlePing(router.id)}
                                 disabled={pingStatus[router.id] === "testing"}
-                                className="py-2 px-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                className="col-span-1 sm:col-auto py-2 px-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-[11px] sm:text-xs rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
                               >
                                 <Activity className="w-3.5 h-3.5" />
                                 {pingStatus[router.id] === "testing" ? (
-                                  <span className="text-[11px]">Test...</span>
+                                  <span className="text-[10px] sm:text-[11px]">Test...</span>
                                 ) : pingStatus[router.id] === "online" ? (
-                                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">OK</span>
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] sm:text-[11px]">OK</span>
                                 ) : (
-                                  <span className="text-[11px]">Ping</span>
+                                  <span className="text-[10px] sm:text-[11px]">Ping</span>
                                 )}
                               </button>
 
@@ -539,7 +539,7 @@ export default function ClientDashboardPage() {
                                     name: router.name,
                                   })
                                 }
-                                className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl transition-colors cursor-pointer flex items-center justify-center"
+                                className="col-span-1 sm:col-auto p-2 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl transition-colors cursor-pointer flex items-center justify-center"
                                 title="Supprimer ce routeur"
                               >
                                 <Trash2 className="w-4 h-4" />

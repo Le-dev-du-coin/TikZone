@@ -382,14 +382,14 @@ export default function RouterDashboardPage({ params }: PageProps) {
       )}
 
       {/* SECTION 2: TÉLÉMÉTRIE MATÉRIELLE ÉPURÉE (Fidèle à la Capture 3) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         {/* Carte 1 : Date & Uptime */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 sm:gap-3.5">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <Calendar className="w-5 h-5" />
           </div>
           <div className="min-w-0 space-y-0.5">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Date & Heure Système</p>
+            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Date & Heure Système</p>
             <p className="text-sm font-black text-slate-900 dark:text-white truncate">
               {telemetry?.system_date ? (
                 `${telemetry.system_date} ${telemetry.system_time || ""}`
@@ -400,8 +400,8 @@ export default function RouterDashboardPage({ params }: PageProps) {
               )}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              <Clock className="w-3 h-3 text-emerald-500" />
-              <span>
+              <Clock className="w-3 h-3 text-emerald-500 shrink-0" />
+              <span className="truncate">
                 Uptime :{" "}
                 {telemetry?.uptime ? (
                   <strong>{telemetry.uptime}</strong>
@@ -416,12 +416,12 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
 
         {/* Carte 2 : Board Name & RouterOS */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 sm:gap-3.5">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
             <Info className="w-5 h-5" />
           </div>
           <div className="min-w-0 space-y-0.5">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Matériel & RouterOS</p>
+            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Matériel & RouterOS</p>
             <p className="text-sm font-black text-slate-900 dark:text-white truncate">
               {telemetry?.board_name ? (
                 telemetry.board_name
@@ -431,7 +431,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
                 router?.name || "MikroTik"
               )}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
               Version :{" "}
               {telemetry?.routeros_version ? (
                 <strong className="text-indigo-600 dark:text-indigo-400">{telemetry.routeros_version}</strong>
@@ -445,13 +445,13 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
 
         {/* Carte 3 : CPU & RAM & HDD */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 sm:gap-3.5">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
             <Cpu className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Charge CPU</span>
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Charge CPU</span>
               <span className="text-xs font-black text-slate-900 dark:text-white">
                 {typeof telemetry?.cpu_load === "number" ? (
                   `${telemetry.cpu_load}%`
@@ -468,7 +468,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
                 style={{ width: `${Math.min(telemetry?.cpu_load ?? 0, 100)}%` }}
               />
             </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
               <span>
                 RAM :{" "}
                 <strong>
