@@ -22,7 +22,19 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
   const resolvedParams = use(params);
   const routerId = resolvedParams.id;
 
-  const [router, setRouter] = useState<RouterData | null>(null);
+  const [router, setRouter] = useState<RouterData | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_routers");
+        if (cached) {
+          const list: RouterData[] = JSON.parse(cached);
+          const current = list.find((r) => r.id === routerId);
+          if (current) return current;
+        }
+      } catch {}
+    }
+    return null;
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copiedWinbox, setCopiedWinbox] = useState(false);
 
@@ -32,6 +44,11 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
       .getRouters()
       .then((routers) => {
         if (!isMounted) return;
+        if (Array.isArray(routers) && routers.length > 0) {
+          try {
+            localStorage.setItem("tikzone_cached_routers", JSON.stringify(routers));
+          } catch {}
+        }
         const current = routers.find((r) => r.id === routerId);
         if (current) setRouter(current);
       })
@@ -41,6 +58,25 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
       isMounted = false;
     };
   }, [routerId]);
+
+  const handleRouterUpdated = (updated: RouterData) => {
+    setRouter(updated);
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_routers");
+        if (cached) {
+          const list: RouterData[] = JSON.parse(cached);
+          const idx = list.findIndex((r) => r.id === updated.id);
+          if (idx !== -1) {
+            list[idx] = { ...list[idx], ...updated };
+          } else {
+            list.push(updated);
+          }
+          localStorage.setItem("tikzone_cached_routers", JSON.stringify(list));
+        }
+      } catch {}
+    }
+  };
 
   const winboxAddress = `${router?.vpn?.vpn_server || "vpn.tikzone.net"}:${router?.vpn?.winbox_port || 51001}`;
 
@@ -55,11 +91,11 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
       {/* Dedicated Router Sidebar (Drawer on mobile, fixed on desktop) */}
       <RouterSidebar
         routerId={routerId}
-        routerName={router?.name || "Routeur MikroTik"}
+        routerName={router?.name || ""}
         hotspotName={router?.hotspot_name || ""}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        onRouterUpdated={(updated) => setRouter(updated)}
+        onRouterUpdated={handleRouterUpdated}
       />
 
       {/* Main Workspace Area (offset by 72 on desktop, full width on mobile) */}

@@ -38,12 +38,29 @@ export default function RouterTicketsPage({ params }: PageProps) {
   const [tickets, setTickets] = useState<any[]>([]);
   const [printFormat, setPrintFormat] = useState<"thermal" | "grid">("grid");
 
-  const [routerData, setRouterData] = useState<any>(null);
+  const [routerData, setRouterData] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_routers");
+        if (cached) {
+          const list = JSON.parse(cached);
+          const found = list.find((r: any) => r.id === routerId);
+          if (found) return found;
+        }
+      } catch {}
+    }
+    return null;
+  });
 
   useEffect(() => {
     api
       .getRouters()
       .then((list) => {
+        if (Array.isArray(list) && list.length > 0) {
+          try {
+            localStorage.setItem("tikzone_cached_routers", JSON.stringify(list));
+          } catch {}
+        }
         const found = list.find((r) => r.id === routerId);
         if (found) setRouterData(found);
       })

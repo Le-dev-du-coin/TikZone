@@ -39,7 +39,19 @@ export default function RouterDashboardPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const routerId = resolvedParams.id;
 
-  const [router, setRouter] = useState<RouterData | null>(null);
+  const [router, setRouter] = useState<RouterData | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_routers");
+        if (cached) {
+          const list: RouterData[] = JSON.parse(cached);
+          const current = list.find((r) => r.id === routerId);
+          if (current) return current;
+        }
+      } catch {}
+    }
+    return null;
+  });
   const [telemetry, setTelemetry] = useState<any>(null);
   const [hotspot, setHotspot] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
@@ -85,6 +97,11 @@ export default function RouterDashboardPage({ params }: PageProps) {
         api.getRouterProfiles(routerId).catch(() => ({ results: [] })),
       ]);
 
+      if (Array.isArray(routersList) && routersList.length > 0) {
+        try {
+          localStorage.setItem("tikzone_cached_routers", JSON.stringify(routersList));
+        } catch {}
+      }
       const current = routersList.find((r) => r.id === routerId);
       if (current) setRouter(current);
       if (sysInfo) setTelemetry(sysInfo);
@@ -182,6 +199,19 @@ export default function RouterDashboardPage({ params }: PageProps) {
     try {
       const res = await api.updateRouter(routerId, { hotspot_name: hotspotNameInput.trim() });
       setRouter(res.router);
+      if (typeof window !== "undefined") {
+        try {
+          const cached = localStorage.getItem("tikzone_cached_routers");
+          if (cached) {
+            const list = JSON.parse(cached);
+            const idx = list.findIndex((r: any) => r.id === routerId);
+            if (idx !== -1) {
+              list[idx] = { ...list[idx], ...res.router };
+              localStorage.setItem("tikzone_cached_routers", JSON.stringify(list));
+            }
+          }
+        } catch {}
+      }
       setIsEditingHotspotName(false);
     } catch (err: any) {
       alert("Erreur lors de la modification : " + err.message);
@@ -191,7 +221,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
   };
 
   const isOnline = telemetry?.online ?? false;
-  const routerDisplayName = router?.hotspot_name || router?.name || "Routeur MikroTik";
+  const routerDisplayName = router?.hotspot_name || router?.name || "";
 
   return (
     <div className="space-y-6">
@@ -204,18 +234,24 @@ export default function RouterDashboardPage({ params }: PageProps) {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-                <span>{routerDisplayName}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHotspotNameInput(router?.hotspot_name || router?.name || "");
-                    setIsEditingHotspotName(true);
-                  }}
-                  className="p-1 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Personnaliser le nom commercial de ce Hotspot"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
+                {routerDisplayName ? (
+                  <span>{routerDisplayName}</span>
+                ) : (
+                  <span className="inline-block h-6 w-36 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                )}
+                {routerDisplayName && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHotspotNameInput(router?.hotspot_name || router?.name || "");
+                      setIsEditingHotspotName(true);
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Personnaliser le nom commercial de ce Hotspot"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </h1>
               <span
                 className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${

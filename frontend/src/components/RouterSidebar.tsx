@@ -24,7 +24,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { api } from "@/lib/api";
 
@@ -39,7 +39,7 @@ interface RouterSidebarProps {
 
 export default function RouterSidebar({
   routerId,
-  routerName = "Routeur MikroTik",
+  routerName = "",
   hotspotName = "",
   isOpen = false,
   onClose,
@@ -48,8 +48,13 @@ export default function RouterSidebar({
   const pathname = usePathname();
   const [hotspotOpen, setHotspotOpen] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [customName, setCustomName] = useState(hotspotName || routerName);
+  const displayName = hotspotName || routerName;
+  const [customName, setCustomName] = useState(displayName);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (displayName) setCustomName(displayName);
+  }, [displayName]);
 
   const handleSaveName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +62,19 @@ export default function RouterSidebar({
     setIsSaving(true);
     try {
       const res = await api.updateRouter(routerId, { hotspot_name: customName.trim() });
+      if (typeof window !== "undefined") {
+        try {
+          const cached = localStorage.getItem("tikzone_cached_routers");
+          if (cached) {
+            const list = JSON.parse(cached);
+            const idx = list.findIndex((r: any) => r.id === routerId);
+            if (idx !== -1) {
+              list[idx] = { ...list[idx], ...res.router };
+              localStorage.setItem("tikzone_cached_routers", JSON.stringify(list));
+            }
+          }
+        } catch {}
+      }
       if (onRouterUpdated) onRouterUpdated(res.router);
       setIsEditingName(false);
     } catch (err: any) {
@@ -65,8 +83,6 @@ export default function RouterSidebar({
       setIsSaving(false);
     }
   };
-
-  const displayName = hotspotName || routerName;
 
   const basePath = `/dashboard/routers/${routerId}`;
 
@@ -157,16 +173,20 @@ export default function RouterSidebar({
                   <Pencil className="w-3 h-3" />
                 </button>
               </div>
-              <h2
-                onClick={() => {
-                  setCustomName(displayName);
-                  setIsEditingName(true);
-                }}
-                className="font-black text-sm text-slate-900 dark:text-white truncate cursor-pointer hover:text-blue-600 transition-colors"
-                title="Cliquez pour renommer"
-              >
-                {displayName}
-              </h2>
+              {displayName ? (
+                <h2
+                  onClick={() => {
+                    setCustomName(displayName);
+                    setIsEditingName(true);
+                  }}
+                  className="font-black text-sm text-slate-900 dark:text-white truncate cursor-pointer hover:text-blue-600 transition-colors"
+                  title="Cliquez pour renommer"
+                >
+                  {displayName}
+                </h2>
+              ) : (
+                <div className="h-4 w-28 bg-slate-200 dark:bg-slate-800 rounded animate-pulse my-0.5" />
+              )}
             </div>
           </div>
 
