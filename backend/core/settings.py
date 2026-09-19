@@ -177,8 +177,8 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 
-# Paramètres Métier Mikroot
-VPN_SERVER_HOST = config("VPN_SERVER_HOST", default=f"vpn.{BASE_DOMAIN}")
+# Paramètres Métier TikZone / VPN
+VPN_SERVER_HOST = config("VPN_SERVER_HOST", default="187.7.20.53")
 MIKHMON_BASE_DOMAIN = config("MIKHMON_BASE_DOMAIN", default=BASE_DOMAIN)
 VPN_SUBNET = config("VPN_SUBNET", default="172.29.88.0/24")
 VPN_API_PORT_START = config("VPN_API_PORT_START", default=41000, cast=int)

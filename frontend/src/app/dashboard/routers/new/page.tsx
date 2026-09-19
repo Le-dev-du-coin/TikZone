@@ -140,10 +140,10 @@ function NewRouterForm() {
       const vpnCred = res.router.vpn;
       const targetInst = instances.find((i) => i.id === selectedMikhmon);
 
-      // Normalisation défensive : Toujours afficher le domaine vpn.tikzone.net si une IPv6 arrive
-      let serverDisplay = vpnCred ? vpnCred.vpn_server : "vpn.tikzone.net";
+      // Normalisation défensive : Toujours afficher l'IPv4 187.7.20.53 si une IPv6 arrive ou si non renseigné
+      let serverDisplay = vpnCred ? vpnCred.vpn_server : "187.7.20.53";
       if (!serverDisplay || serverDisplay.includes(":")) {
-        serverDisplay = "vpn.tikzone.net";
+        serverDisplay = "187.7.20.53";
       }
 
       setCreatedSuccess({

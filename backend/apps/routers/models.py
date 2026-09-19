@@ -161,12 +161,11 @@ class VpnCredential(models.Model):
         vpn_user = f"{router.name.lower()}_{router.id.hex[:6]}"
         vpn_password = secrets.token_hex(16)
         wg_priv, wg_pub = generate_wireguard_keypair()
-        base_domain = getattr(settings, "BASE_DOMAIN", "tikzone.net")
-        server_host = getattr(settings, "VPN_SERVER_HOST", f"vpn.{base_domain}")
+        server_host = getattr(settings, "VPN_SERVER_HOST", "187.7.20.53")
         # Sécurité Senior : Si une IPv6 brute a été configurée par mégarde (présence de ':'),
-        # on bascule impérativement sur le nom de domaine DNS résolu en IPv4
+        # on bascule impérativement sur l'adresse IPv4 directe pour éliminer tout risque DNS sur MikroTik
         if not server_host or ":" in server_host:
-            server_host = f"vpn.{base_domain}"
+            server_host = "187.7.20.53"
 
         return cls.objects.create(
             router=router,
@@ -185,13 +184,12 @@ class VpnCredential(models.Model):
         instance = self.router.mikhmon_instance
         is_v7 = instance.routeros_version == MikhmonInstance.RouterOSVersion.V7
 
-        # Assainissement de l'endpoint : Toujours un domaine ou IPv4 valide
-        base_domain = getattr(settings, "BASE_DOMAIN", "tikzone.net")
+        # Assainissement de l'endpoint : Toujours une IPv4 valide ou un domaine
         endpoint_host = self.vpn_server
         if not endpoint_host or ":" in endpoint_host:
-            endpoint_host = getattr(settings, "VPN_SERVER_HOST", f"vpn.{base_domain}")
-            if ":" in endpoint_host:
-                endpoint_host = f"vpn.{base_domain}"
+            endpoint_host = getattr(settings, "VPN_SERVER_HOST", "187.7.20.53")
+            if not endpoint_host or ":" in endpoint_host:
+                endpoint_host = "187.7.20.53"
 
         if is_v7:
             # === SCRIPT ROUTEROS 7 (WIREGUARD NAT TRAVERSAL) ===
