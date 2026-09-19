@@ -38,7 +38,7 @@ export default function Navbar({ balance = 500 }: { balance?: number }) {
             </Link>
 
             <Link
-              href="/routers/new"
+              href="/dashboard/routers/new"
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
             >
               <RouterIcon className="w-4 h-4" />

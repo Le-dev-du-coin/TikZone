@@ -31,6 +31,7 @@ function NewRouterForm() {
   const initialSpace = searchParams.get("space") || "";
 
   const [instances, setInstances] = useState<InstanceData[]>([]);
+  const [loadingInstances, setLoadingInstances] = useState(true);
   const [selectedMikhmon, setSelectedMikhmon] = useState(initialSpace);
   const [routerName, setRouterName] = useState("");
   const [autoRenew, setAutoRenew] = useState(true);
@@ -72,6 +73,8 @@ function NewRouterForm() {
         }
       } catch {
         // Ignorer
+      } finally {
+        setLoadingInstances(false);
       }
     }
     loadData();
@@ -123,13 +126,13 @@ function NewRouterForm() {
       <div className="flex items-center gap-3">
         <Link
           href="/dashboard"
-          className="p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">Ajouter un Routeur</h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Ajouter un Routeur</h1>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
             Connectez votre MikroTik à distance via notre tunnel VPN sécurisé.
           </p>
         </div>
@@ -230,6 +233,19 @@ function NewRouterForm() {
               Ajouter un autre routeur
             </button>
           </div>
+        </div>
+      ) : loadingInstances ? (
+        /* SKELETON LOADER PENDANT LE CHARGEMENT (ZÉRO FLASH) */
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-5 animate-pulse">
+          <div className="space-y-2">
+            <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded" />
+            <div className="h-11 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-4 w-40 bg-slate-200 dark:bg-slate-800 rounded" />
+            <div className="h-11 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl" />
+          </div>
+          <div className="h-12 w-full bg-slate-200 dark:bg-slate-800 rounded-2xl mt-4" />
         </div>
       ) : instances.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-3">

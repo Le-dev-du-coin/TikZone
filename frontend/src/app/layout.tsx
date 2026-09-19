@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" data-scroll-behavior="smooth" className="scroll-smooth" suppressHydrationWarning>
-      <body suppressHydrationWarning className="bg-slate-950 text-slate-100 antialiased selection:bg-blue-600 selection:text-white">
+      <body suppressHydrationWarning className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-blue-600 selection:text-white">
         <AuthProvider>
           {children}
           <WhatsAppSupportButton />

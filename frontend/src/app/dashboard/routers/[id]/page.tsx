@@ -176,7 +176,8 @@ export default function RouterDashboardPage({ params }: PageProps) {
     try {
       await api.rebootRouter(routerId);
       setShowRebootConfirm(false);
-      alert("Ordre de redémarrage envoyé au routeur MikroTik !");
+      setActionSuccess("Ordre de redémarrage matériel transmis avec succès ! Le routeur sera de nouveau joignable d'ici 60 à 90 secondes.");
+      setTimeout(() => setActionSuccess(null), 9000);
     } catch (err: any) {
       alert("Erreur lors du redémarrage : " + err.message);
     } finally {
@@ -318,6 +319,14 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* Action Success Alert Banner */}
+      {actionSuccess && (
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm flex items-center gap-2.5 shadow-xs animate-in fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span className="font-semibold">{actionSuccess}</span>
+        </div>
+      )}
+
       {/* BANDEAU D'ONBOARDING : ROUTEUR EN ATTENTE DE CONNEXION */}
       {!isOnline && (
         <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border-2 border-amber-500/30 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xs">
@@ -382,11 +391,26 @@ export default function RouterDashboardPage({ params }: PageProps) {
           <div className="min-w-0 space-y-0.5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Date & Heure Système</p>
             <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-              {telemetry?.system_date ? `${telemetry.system_date} ${telemetry.system_time || ""}` : "2026-09-18 20:55:00"}
+              {telemetry?.system_date ? (
+                `${telemetry.system_date} ${telemetry.system_time || ""}`
+              ) : loading ? (
+                <span className="inline-block h-4 w-28 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+              ) : (
+                "—"
+              )}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
               <Clock className="w-3 h-3 text-emerald-500" />
-              <span>Uptime : <strong>{telemetry?.uptime || "00:09:13"}</strong></span>
+              <span>
+                Uptime :{" "}
+                {telemetry?.uptime ? (
+                  <strong>{telemetry.uptime}</strong>
+                ) : loading ? (
+                  <span className="inline-block h-3 w-16 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                ) : (
+                  "—"
+                )}
+              </span>
             </p>
           </div>
         </div>
@@ -399,10 +423,23 @@ export default function RouterDashboardPage({ params }: PageProps) {
           <div className="min-w-0 space-y-0.5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Matériel & RouterOS</p>
             <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-              {telemetry?.board_name || "L009UiGS-2HaxD"}
+              {telemetry?.board_name ? (
+                telemetry.board_name
+              ) : loading ? (
+                <span className="inline-block h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+              ) : (
+                router?.name || "MikroTik"
+              )}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Version : <strong className="text-indigo-600 dark:text-indigo-400">{telemetry?.routeros_version || "7.24.4 (stable)"}</strong>
+              Version :{" "}
+              {telemetry?.routeros_version ? (
+                <strong className="text-indigo-600 dark:text-indigo-400">{telemetry.routeros_version}</strong>
+              ) : loading ? (
+                <span className="inline-block h-3 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+              ) : (
+                "—"
+              )}
             </p>
           </div>
         </div>
@@ -415,17 +452,35 @@ export default function RouterDashboardPage({ params }: PageProps) {
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Charge CPU</span>
-              <span className="text-xs font-black text-slate-900 dark:text-white">{telemetry?.cpu_load ?? 28}%</span>
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                {typeof telemetry?.cpu_load === "number" ? (
+                  `${telemetry.cpu_load}%`
+                ) : loading ? (
+                  <span className="inline-block h-3 w-8 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                ) : (
+                  "—"
+                )}
+              </span>
             </div>
             <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
               <div
                 className="h-full rounded-full bg-amber-500 transition-all"
-                style={{ width: `${Math.min(telemetry?.cpu_load ?? 28, 100)}%` }}
+                style={{ width: `${Math.min(telemetry?.cpu_load ?? 0, 100)}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-              <span>RAM : <strong>{telemetry?.free_memory || "317.82 Mio"}</strong></span>
-              <span>HDD : <strong>{telemetry?.free_hdd || "93.18 Mio"}</strong></span>
+              <span>
+                RAM :{" "}
+                <strong>
+                  {telemetry?.free_memory || (loading ? "..." : "—")}
+                </strong>
+              </span>
+              <span>
+                HDD :{" "}
+                <strong>
+                  {telemetry?.free_hdd || (loading ? "..." : "—")}
+                </strong>
+              </span>
             </div>
           </div>
         </div>
@@ -454,7 +509,13 @@ export default function RouterDashboardPage({ params }: PageProps) {
             </div>
             <div className="mt-3">
               <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                {hotspot?.active_count ?? 44}
+                {typeof hotspot?.active_count === "number" ? (
+                  hotspot.active_count
+                ) : loading ? (
+                  <span className="inline-block h-8 w-12 bg-white/20 rounded animate-pulse" />
+                ) : (
+                  0
+                )}
               </div>
               <p className="text-[10px] sm:text-[11px] text-emerald-300 font-bold mt-1 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -476,7 +537,13 @@ export default function RouterDashboardPage({ params }: PageProps) {
             </div>
             <div className="mt-3">
               <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                {hotspot?.total_users_count ?? 389}
+                {typeof hotspot?.total_users_count === "number" ? (
+                  hotspot.total_users_count
+                ) : loading ? (
+                  <span className="inline-block h-8 w-14 bg-white/20 rounded animate-pulse" />
+                ) : (
+                  0
+                )}
               </div>
               <p className="text-[10px] sm:text-[11px] text-emerald-200 mt-1">
                 Tickets & comptes
@@ -878,26 +945,42 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* CONFIRMATION DE REDÉMARRAGE */}
+      {/* CONFIRMATION DE REDÉMARRAGE SÉCURISÉE */}
       {showRebootConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center mx-auto">
-              <RotateCcw className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 dark:text-white text-base">
+                  Confirmer le redémarrage matériel
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Routeur : <strong className="text-slate-800 dark:text-slate-200">{routerDisplayName}</strong>
+                </p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <h3 className="font-black text-slate-900 dark:text-white text-base">
-                Redémarrer le routeur ?
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Cette action va redémarrer le boîtier MikroTik distant. La connexion sera interrompue pendant environ 60 secondes.
+
+            <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 space-y-2.5 text-xs text-rose-950 dark:text-rose-200">
+              <p className="font-bold flex items-center gap-1.5 text-rose-800 dark:text-rose-300">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>Conséquences immédiates de cette opération :</span>
               </p>
+              <ul className="space-y-1.5 list-disc list-inside text-[11px] leading-relaxed text-rose-900/90 dark:text-rose-200/90">
+                <li><strong>Coupure du Wi-Fi :</strong> Toutes les sessions utilisateurs actuellement connectées au Hotspot seront interrompues.</li>
+                <li><strong>Temps d'arrêt :</strong> Le routeur sera injoignable pendant environ <strong>60 à 90 secondes</strong>.</li>
+                <li><strong>Rétablissement automatique :</strong> Le tunnel VPN TikZone et le portail Hotspot se relanceront automatiquement au boot.</li>
+              </ul>
             </div>
-            <div className="flex items-center justify-center gap-2 pt-2">
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => setShowRebootConfirm(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                disabled={actionLoading}
+                className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
               >
                 Annuler
               </button>
@@ -905,9 +988,10 @@ export default function RouterDashboardPage({ params }: PageProps) {
                 type="button"
                 onClick={handleReboot}
                 disabled={actionLoading}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/20 transition-all flex items-center gap-2 cursor-pointer"
               >
-                Confirmer
+                <RotateCcw className={`w-3.5 h-3.5 ${actionLoading ? "animate-spin" : ""}`} />
+                <span>{actionLoading ? "Envoi de l'ordre..." : "Confirmer le redémarrage"}</span>
               </button>
             </div>
           </div>

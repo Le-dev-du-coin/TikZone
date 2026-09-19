@@ -9,7 +9,7 @@ export default function MobileBottomNav() {
 
   const navItems = [
     { href: "/", label: "Accueil", icon: Home },
-    { href: "/routers/new", label: "Routeur+", icon: RouterIcon },
+    { href: "/dashboard/routers/new", label: "Routeur+", icon: RouterIcon },
     { href: "/mikhmon/new", label: "Mikhmon+", icon: PlusCircle },
     { href: "/wallet", label: "Solde", icon: CreditCard },
     { href: "/superadmin", label: "Admin", icon: Shield },
