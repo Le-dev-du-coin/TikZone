@@ -46,6 +46,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [copiedWinbox, setCopiedWinbox] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
 
   // Modales
   const [showAddModal, setShowAddModal] = useState(false);
@@ -243,6 +244,60 @@ export default function RouterDashboardPage({ params }: PageProps) {
           </button>
         </div>
       </div>
+
+      {/* BANDEAU D'ONBOARDING : ROUTEUR EN ATTENTE DE CONNEXION */}
+      {!isOnline && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border-2 border-amber-500/30 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                  Routeur en attente de connexion
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Ce MikroTik n'est pas encore relié à TikZone. Pour activer la télémétrie et les tickets, appliquez le script ci-dessous dans votre terminal Winbox.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const scriptToCopy = router?.vpn?.mikrotik_script || router?.script || "";
+                if (scriptToCopy) {
+                  navigator.clipboard.writeText(scriptToCopy);
+                  setCopiedScript(true);
+                  setTimeout(() => setCopiedScript(false), 2000);
+                } else {
+                  alert("Script introuvable. Veuillez recharger la page.");
+                }
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-md transition-all self-start sm:self-center cursor-pointer"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>{copiedScript ? "Script copié !" : "Copier le script MikroTik"}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+            <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+              <span className="font-black text-amber-600">Étape 1</span>
+              <p className="text-slate-600 dark:text-slate-400 mt-0.5">Ouvrez Winbox sur votre PC et connectez-vous au routeur</p>
+            </div>
+            <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+              <span className="font-black text-amber-600">Étape 2</span>
+              <p className="text-slate-600 dark:text-slate-400 mt-0.5">Cliquez sur le menu <strong>New Terminal</strong> à gauche</p>
+            </div>
+            <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+              <span className="font-black text-amber-600">Étape 3</span>
+              <p className="text-slate-600 dark:text-slate-400 mt-0.5">Collez le script et appuyez sur Entrée (le voyant passera au vert)</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SECTION 2: TÉLÉMÉTRIE MATÉRIELLE ÉPURÉE (Fidèle à la Capture 3) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -3,6 +3,7 @@ import socket
 from typing import Any, Dict, List, Optional
 import routeros_api
 from django.conf import settings
+from django.core.cache import cache
 from apps.routers.models import Router
 
 logger = logging.getLogger(__name__)
@@ -27,11 +28,18 @@ class MikrotikService:
             return str(bytes_str)
 
     @classmethod
-    def get_api_connection(cls, router: Router, timeout: int = 4):
-        """Établit une connexion API RouterOS vers le routeur via son tunnel VPN."""
+    def get_api_connection(cls, router: Router, timeout: float = 1.0):
+        """Établit une connexion API RouterOS vers le routeur via son tunnel VPN avec Circuit Breaker."""
         vpn = getattr(router, "vpn_credential", None)
         if not vpn:
             raise ValueError(f"Le routeur '{router.name}' n'a pas d'identifiants VPN alloués.")
+
+        # Circuit Breaker : Si le routeur a été détecté injoignable il y a moins de 10s, fail fast en 0ms
+        circuit_key = f"mikrotik_offline_cb_{router.id}"
+        if cache.get(circuit_key):
+            raise ConnectionError(
+                f"Circuit breaker actif: Le routeur '{router.name}' est actuellement hors-ligne."
+            )
 
         # Mot de passe admin hérité de l'instance ou '123' par défaut
         admin_password = getattr(router.mikhmon_instance, "admin_password", "") or "123"
@@ -40,25 +48,37 @@ class MikrotikService:
         target_host = vpn.assigned_ip
         target_port = 8728
 
-        # Test d'ouverture de socket rapide (liveness probe)
+        # Test d'ouverture de socket rapide (liveness probe ultra-rapide)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(timeout)
+        is_connected = False
         try:
             sock.connect((target_host, target_port))
             sock.close()
+            is_connected = True
         except Exception:
-            # Essai sur le port public distant
-            target_host = vpn.vpn_server
-            target_port = vpn.api_port
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(timeout)
-                sock.connect((target_host, target_port))
-                sock.close()
-            except Exception as e:
-                raise ConnectionError(
-                    f"Impossible de joindre le port API du routeur ({target_host}:{target_port}) : {e}"
-                )
+            # Essai de secours sur le port public distant si configuré et différent
+            if vpn.vpn_server and vpn.api_port and (vpn.vpn_server != target_host or vpn.api_port != target_port):
+                target_host = vpn.vpn_server
+                target_port = vpn.api_port
+                try:
+                    sock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock2.settimeout(timeout)
+                    sock2.connect((target_host, target_port))
+                    sock2.close()
+                    is_connected = True
+                except Exception:
+                    is_connected = False
+
+        if not is_connected:
+            # Positionne le circuit breaker pendant 10 secondes pour libérer les workers
+            cache.set(circuit_key, True, timeout=10)
+            raise ConnectionError(
+                f"Impossible de joindre le port API du routeur '{router.name}' ({target_host}:{target_port}) : Hôte injoignable."
+            )
+
+        # Si joignable, on s'assure que le circuit breaker est réinitialisé
+        cache.delete(circuit_key)
 
         api_pool = routeros_api.RouterOsApiPool(
             target_host,

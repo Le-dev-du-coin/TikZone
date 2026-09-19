@@ -11,21 +11,32 @@ interface RouterSwitcherProps {
 
 export default function RouterSwitcher({ currentRouterId }: RouterSwitcherProps) {
   const router = useRouter();
-  const [routers, setRouters] = useState<RouterData[]>([]);
+  const [routers, setRouters] = useState<RouterData[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_routers");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     api
       .getRouters()
       .then((data) => {
-        if (isMounted) {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
           setRouters(data);
-          setLoading(false);
+          try {
+            localStorage.setItem("tikzone_cached_routers", JSON.stringify(data));
+          } catch {}
         }
       })
-      .catch(() => {
+      .catch(() => {})
+      .finally(() => {
         if (isMounted) setLoading(false);
       });
     return () => {

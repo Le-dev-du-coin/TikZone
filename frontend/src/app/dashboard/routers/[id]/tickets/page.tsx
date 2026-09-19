@@ -74,9 +74,17 @@ export default function RouterTicketsPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Print Styles */}
+      {/* Print Styles Exact Mikhmon Standard (A4 4-Columns 27mm) */}
       <style jsx global>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 6mm 5mm;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -89,12 +97,45 @@ export default function RouterTicketsPage({ params }: PageProps) {
             left: 0;
             top: 0;
             width: 100%;
+            margin: 0;
+            padding: 0;
           }
           header,
           aside,
           button,
           .no-print {
             display: none !important;
+          }
+          .vouchers-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 2.5mm !important;
+            padding: 0 !important;
+            width: 100% !important;
+          }
+          .voucher-card {
+            border: 1.5px solid #111111 !important;
+            border-radius: 3px !important;
+            padding: 1.8mm !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            height: 27mm !important;
+            box-sizing: border-box !important;
+          }
+          .pos-container {
+            width: 72mm !important;
+            margin: 0 auto !important;
+          }
+          .pos-card {
+            border-bottom: 1.5px dashed #000000 !important;
+            padding: 3mm 0 !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
@@ -107,28 +148,28 @@ export default function RouterTicketsPage({ params }: PageProps) {
             <span>Générateur & Impression de Tickets</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Générez des séries de coupons Hotspot et imprimez-les en format planche A4 ou rouleau thermique POS.
+            Générez des séries de coupons Hotspot et imprimez-les en format planche A4 (4 colonnes, 36 à 40 tickets/page) ou rouleau thermique POS.
           </p>
         </div>
 
         {tickets.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setPrintFormat("grid")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   printFormat === "grid"
                     ? "bg-white dark:bg-slate-900 text-blue-600 shadow-xs"
                     : "text-slate-600 dark:text-slate-400"
                 }`}
               >
-                Format Grille A4
+                Format Planche A4 (4 col)
               </button>
               <button
                 type="button"
                 onClick={() => setPrintFormat("thermal")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   printFormat === "thermal"
                     ? "bg-white dark:bg-slate-900 text-blue-600 shadow-xs"
                     : "text-slate-600 dark:text-slate-400"
@@ -267,52 +308,56 @@ export default function RouterTicketsPage({ params }: PageProps) {
           </div>
 
           {printFormat === "grid" ? (
-            /* Grille A4 Découpable (4 colonnes) */
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-4 rounded-2xl border border-slate-200 text-slate-900">
+            /* Grille A4 Découpable (4 colonnes, Standard Mikhmon 27mm) */
+            <div className="vouchers-grid grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white p-3 sm:p-5 rounded-2xl border border-slate-200 text-slate-950">
               {tickets.map((t, idx) => (
                 <div
                   key={idx}
-                  className="p-3 border-2 border-dashed border-slate-300 rounded-xl flex flex-col justify-between text-center bg-slate-50/50 space-y-2 break-inside-avoid"
+                  className="voucher-card border-[1.5px] border-slate-900 rounded-md p-2 bg-white text-slate-950 flex flex-col justify-between select-none"
+                  style={{ minHeight: "105px" }}
                 >
-                  <div className="border-b border-slate-200 pb-1.5">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-blue-600">
-                      TikZone Hotspot
-                    </p>
-                    <p className="text-xs font-bold text-slate-600">
-                      Pass {t.time_limit}
-                    </p>
+                  {/* Header */}
+                  <div>
+                    <div className="flex items-center justify-between font-black text-[11px] uppercase tracking-tight">
+                      <span className="truncate pr-1">TIKZONE HOTSPOT</span>
+                      <span className="shrink-0 text-[10px]">[{idx + 1}]</span>
+                    </div>
+                    <div className="border-b-[1.5px] border-slate-900 my-1"></div>
                   </div>
 
-                  <div className="py-1">
-                    <p className="text-[10px] text-slate-400 font-semibold">Code Unique :</p>
-                    <p className="text-base font-black font-mono tracking-widest text-slate-900 bg-white border border-slate-200 rounded-lg py-1 px-2">
+                  {/* Body : Code Ticket en grand */}
+                  <div className="my-auto py-1 text-center space-y-0.5">
+                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-700">
+                      Code Ticket
+                    </div>
+                    <div className="border border-slate-900 rounded px-2 py-0.5 text-sm font-black font-mono tracking-widest bg-slate-50">
                       {t.code}
-                    </p>
+                    </div>
                   </div>
 
-                  <div className="border-t border-slate-200 pt-1 flex items-center justify-between text-[10px] font-bold text-slate-600">
-                    <span>{t.price} FCFA</span>
-                    <span>1 Appareil</span>
+                  {/* Footer : Durée & Prix */}
+                  <div className="border border-slate-900 rounded px-1 py-0.5 text-center text-[10px] font-black uppercase tracking-tight bg-slate-50 mt-1 truncate">
+                    Pass {t.time_limit} - {t.price} FCFA
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             /* Format Rouleau Thermique POS 58mm / 80mm */
-            <div className="max-w-xs mx-auto space-y-4 bg-white p-4 rounded-xl border border-slate-200 text-slate-900 font-mono">
+            <div className="pos-container max-w-xs mx-auto space-y-3 bg-white p-4 rounded-xl border border-slate-200 text-slate-900 font-mono">
               {tickets.map((t, idx) => (
                 <div
                   key={idx}
-                  className="p-4 border border-slate-400 rounded-lg text-center space-y-2 break-inside-avoid"
+                  className="pos-card p-3 border border-slate-400 rounded-lg text-center space-y-1.5"
                 >
                   <p className="text-xs font-black uppercase">*** TIKZONE HOTSPOT ***</p>
                   <p className="text-[11px]">Pass Internet : {t.time_limit}</p>
                   <p className="text-[11px]">Prix : {t.price} FCFA</p>
-                  <div className="border-t border-b border-dashed border-slate-400 py-2 my-1">
-                    <p className="text-[10px]">CODE D'ACCÈS :</p>
-                    <p className="text-lg font-black tracking-widest">{t.code}</p>
+                  <div className="border-t border-b border-dashed border-slate-400 py-1.5 my-1">
+                    <p className="text-[9px] uppercase text-slate-500 font-sans">CODE D'ACCÈS :</p>
+                    <p className="text-base font-black tracking-widest">{t.code}</p>
                   </div>
-                  <p className="text-[9px] text-slate-500">Connectez-vous au WiFi et saisissez votre code.</p>
+                  <p className="text-[8.5px] text-slate-500">Connectez-vous au WiFi et saisissez votre code.</p>
                 </div>
               ))}
             </div>
