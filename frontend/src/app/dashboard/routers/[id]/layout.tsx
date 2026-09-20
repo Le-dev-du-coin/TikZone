@@ -36,7 +36,25 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
     return null;
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("tikzone_sidebar_collapsed") === "true";
+      } catch {}
+    }
+    return false;
+  });
   const [copiedWinbox, setCopiedWinbox] = useState(false);
+
+  const handleToggleCollapse = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("tikzone_sidebar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -97,11 +115,13 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
         hotspotName={router?.hotspot_name || ""}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
         onRouterUpdated={handleRouterUpdated}
       />
 
-      {/* Main Workspace Area (offset by 72 on desktop, full width on mobile) */}
-      <div className="flex-1 md:pl-72 flex flex-col min-w-0">
+      {/* Main Workspace Area (offset by 72 or 20 on desktop, full width on mobile) */}
+      <div className={`flex-1 ${isSidebarCollapsed ? "md:pl-20" : "md:pl-72"} flex flex-col min-w-0 transition-all duration-200`}>
         {/* Router Header (Sticky, Mobile-First) */}
         <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2 sm:gap-3">

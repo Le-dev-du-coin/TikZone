@@ -415,8 +415,11 @@ class RouterGenerateTicketsView(APIView):
             profile = request.data.get("profile", "default")
             time_limit = request.data.get("time_limit", "1h")
             prefix = request.data.get("prefix", "")
-            code_length = int(request.data.get("code_length", 6))
+            raw_length = int(request.data.get("code_length", 6))
+            code_length = raw_length if raw_length in [4, 6, 8] else 6
+            code_format = request.data.get("code_format", "alpha_upper")
             price = int(request.data.get("price", 100))
+            custom_comment = request.data.get("comment", "").strip()
 
             tickets = MikrotikService.generate_batch_tickets(
                 router,
@@ -425,7 +428,9 @@ class RouterGenerateTicketsView(APIView):
                 time_limit=time_limit,
                 prefix=prefix,
                 code_length=code_length,
+                code_format=code_format,
                 price=price,
+                comment=custom_comment,
             )
             return Response({
                 "detail": f"{len(tickets)} tickets générés avec succès pour '{router.name}' !",
@@ -555,6 +560,35 @@ class RouterSalesReportView(APIView):
 
         data = MikrotikService.get_sales_report(router)
         return Response(data)
+
+
+class RouterSalesReportPdfView(APIView):
+    """Génération du rapport financier PDF vectoriel haute fidélité via Chromium (Playwright)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from django.http import HttpResponse
+        from .services.mikrotik import MikrotikService
+        from .services.pdf_service import generate_sales_report_pdf
+        import datetime
+
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        data = MikrotikService.get_sales_report(router)
+        pdf_bytes = generate_sales_report_pdf(router, data)
+
+        today_slug = datetime.date.today().strftime("%Y-%m-%d")
+        content_type = "application/pdf" if pdf_bytes.startswith(b"%PDF") else "text/html"
+        filename = f"rapport_ventes_{router.name}_{today_slug}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type=content_type)
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
 
 
 class RouterLogsView(APIView):

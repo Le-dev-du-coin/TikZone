@@ -240,7 +240,7 @@ export const api = {
     return result;
   },
 
-  async generateRouterTickets(routerId: string, data: { count: number; profile?: string; time_limit?: string; prefix?: string; code_length?: number; price?: number }) {
+  async generateRouterTickets(routerId: string, data: { count: number; profile?: string; time_limit?: string; prefix?: string; code_length?: number; code_format?: string; price?: number; comment?: string }) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/generate/`, {
       method: "POST",
       headers: getAuthHeaders(),
@@ -297,6 +297,22 @@ export const api = {
     });
     if (!res.ok) throw new Error("Erreur du rapport de ventes");
     return await res.json();
+  },
+
+  async downloadSalesReportPdf(routerId: string, routerName = "routeur") {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/reports/pdf/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur lors de la génération du PDF Chromium");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rapport_financier_${routerName}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   },
 
   async getRouterLogs(routerId: string, limit = 50) {

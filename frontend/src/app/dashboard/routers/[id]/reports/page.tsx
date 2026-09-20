@@ -63,6 +63,19 @@ export default function RouterReportsPage({ params }: PageProps) {
     loadData();
   }, [routerId]);
 
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      await api.downloadSalesReportPdf(routerId, "bilan");
+    } catch (err: any) {
+      alert("Erreur lors de l'export PDF : " + err.message);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -121,14 +134,25 @@ export default function RouterReportsPage({ params }: PageProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            title="Générer un PDF vectoriel haute définition via Chromium (Playwright)"
+          >
+            <Download className={`w-4 h-4 ${downloadingPdf ? "animate-bounce" : ""}`} />
+            <span>{downloadingPdf ? "Génération..." : "PDF Chromium"}</span>
+          </button>
+
           <button
             type="button"
             onClick={handlePrint}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>Imprimer le Bilan</span>
+            <span>Imprimer</span>
           </button>
 
           <button

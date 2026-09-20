@@ -529,32 +529,31 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* SECTION 2: TÉLÉMÉTRIE MATÉRIELLE ÉPURÉE (Fidèle à la Capture 3) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+      {/* SECTION 2: TÉLÉMÉTRIE MATÉRIELLE ÉPURÉE (Compacte sur une seule ligne) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
         {/* Carte 1 : Date & Uptime */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 sm:gap-3.5">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <Calendar className="w-5 h-5" />
+        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div className="min-w-0 space-y-0.5">
-            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Date & Heure Système</p>
-            <p className="text-sm font-black text-slate-900 dark:text-white truncate">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Date & Heure</p>
+            <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
               {telemetry?.system_date ? (
                 `${telemetry.system_date} ${telemetry.system_time || ""}`
               ) : loading ? (
-                <span className="inline-block h-4 w-28 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                <span className="inline-block h-3.5 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
               ) : (
                 "—"
               )}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
               <Clock className="w-3 h-3 text-emerald-500 shrink-0" />
               <span className="truncate">
-                Uptime :{" "}
                 {telemetry?.uptime ? (
                   <strong>{telemetry.uptime}</strong>
                 ) : loading ? (
-                  <span className="inline-block h-3 w-16 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                  <span className="inline-block h-3 w-12 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
                 ) : (
                   "—"
                 )}
@@ -564,27 +563,26 @@ export default function RouterDashboardPage({ params }: PageProps) {
         </div>
 
         {/* Carte 2 : Board Name & RouterOS */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 sm:gap-3.5">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-            <Info className="w-5 h-5" />
+        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Info className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div className="min-w-0 space-y-0.5">
-            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Matériel & RouterOS</p>
-            <p className="text-sm font-black text-slate-900 dark:text-white truncate">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Système & RouterOS</p>
+            <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
               {telemetry?.board_name ? (
                 telemetry.board_name
               ) : loading ? (
-                <span className="inline-block h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                <span className="inline-block h-3.5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
               ) : (
                 router?.name || "MikroTik"
               )}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              Version :{" "}
-              {telemetry?.routeros_version ? (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              v{telemetry?.routeros_version ? (
                 <strong className="text-indigo-600 dark:text-indigo-400">{telemetry.routeros_version}</strong>
               ) : loading ? (
-                <span className="inline-block h-3 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                <span className="inline-block h-3 w-16 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
               ) : (
                 "—"
               )}
@@ -592,14 +590,14 @@ export default function RouterDashboardPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Carte 3 : CPU & RAM & HDD */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 sm:gap-3.5">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <Cpu className="w-5 h-5" />
+        {/* Carte 3 : CPU & RAM */}
+        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Cpu className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Charge CPU</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Charge CPU</span>
               <span className="text-xs font-black text-slate-900 dark:text-white">
                 {typeof telemetry?.cpu_load === "number" ? (
                   `${telemetry.cpu_load}%`
@@ -616,18 +614,12 @@ export default function RouterDashboardPage({ params }: PageProps) {
                 style={{ width: `${Math.min(telemetry?.cpu_load ?? 0, 100)}%` }}
               />
             </div>
-            <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-0.5">
               <span>
-                RAM :{" "}
-                <strong>
-                  {telemetry?.free_memory || (loading ? "..." : "—")}
-                </strong>
+                RAM : <strong>{telemetry?.free_memory || (loading ? "..." : "—")}</strong>
               </span>
               <span>
-                HDD :{" "}
-                <strong>
-                  {telemetry?.free_hdd || (loading ? "..." : "—")}
-                </strong>
+                HDD : <strong>{telemetry?.free_hdd || (loading ? "..." : "—")}</strong>
               </span>
             </div>
           </div>

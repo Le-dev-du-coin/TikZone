@@ -4,17 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
-  Check,
   ChevronDown,
   ChevronRight,
-  Clock,
   Coins,
-  Cpu,
-  FileText,
   Gauge,
-  HardDrive,
   LayoutDashboard,
-  Pencil,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Printer,
   Radio,
   ScrollText,
@@ -23,11 +20,9 @@ import {
   Users,
   Wifi,
   X,
-  Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
-import { api } from "@/lib/api";
 
 interface RouterSidebarProps {
   routerId: string;
@@ -35,6 +30,8 @@ interface RouterSidebarProps {
   hotspotName?: string;
   isOpen?: boolean;
   onClose?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
   onRouterUpdated?: (updated: any) => void;
 }
 
@@ -44,46 +41,12 @@ export default function RouterSidebar({
   hotspotName = "",
   isOpen = false,
   onClose,
-  onRouterUpdated,
+  isCollapsed = false,
+  onToggleCollapse,
 }: RouterSidebarProps) {
   const pathname = usePathname();
   const [hotspotOpen, setHotspotOpen] = useState(true);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const displayName = hotspotName || routerName;
-  const [customName, setCustomName] = useState(displayName);
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    if (displayName) setCustomName(displayName);
-  }, [displayName]);
-
-  const handleSaveName = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customName.trim()) return;
-    setIsSaving(true);
-    try {
-      const res = await api.updateRouter(routerId, { hotspot_name: customName.trim() });
-      if (typeof window !== "undefined") {
-        try {
-          const cached = localStorage.getItem("tikzone_cached_routers");
-          if (cached) {
-            const list = JSON.parse(cached);
-            const idx = list.findIndex((r: any) => r.id === routerId);
-            if (idx !== -1) {
-              list[idx] = { ...list[idx], ...res.router };
-              localStorage.setItem("tikzone_cached_routers", JSON.stringify(list));
-            }
-          }
-        } catch {}
-      }
-      if (onRouterUpdated) onRouterUpdated(res.router);
-      setIsEditingName(false);
-    } catch (err: any) {
-      alert("Erreur lors de la modification : " + err.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const displayName = hotspotName || routerName || "Routeur Hotspot";
 
   const basePath = `/dashboard/routers/${routerId}`;
 
@@ -152,52 +115,41 @@ export default function RouterSidebar({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col border-r border-slate-200 dark:border-slate-800 transition-transform duration-200 md:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col border-r border-slate-200 dark:border-slate-800 transition-all duration-200 md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        } ${isCollapsed ? "md:w-20 w-72" : "w-72"}`}
       >
-        {/* Router Header Badge (Nom Programmable de l'Espace) */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        {/* Router Header Badge */}
+        <div className={`p-4 border-b border-slate-100 dark:border-slate-800 flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
+          <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? "hidden" : "flex-1"}`}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 shrink-0">
               <Wifi className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                  Espace Routeur
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomName(displayName);
-                    setIsEditingName(true);
-                  }}
-                  className="p-0.5 rounded text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                  title="Personnaliser le nom commercial de cet espace"
-                >
-                  <Pencil className="w-3 h-3" />
-                </button>
-              </div>
-              {displayName ? (
-                <h2
-                  onClick={() => {
-                    setCustomName(displayName);
-                    setIsEditingName(true);
-                  }}
-                  className="font-black text-sm text-slate-900 dark:text-white truncate cursor-pointer hover:text-blue-600 transition-colors"
-                  title="Cliquez pour renommer"
-                >
-                  {displayName}
-                </h2>
-              ) : (
-                <div className="h-4 w-28 bg-slate-200 dark:bg-slate-800 rounded animate-pulse my-0.5" />
-              )}
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                Espace Routeur
+              </span>
+              <h2 className="font-black text-sm text-slate-900 dark:text-white truncate">
+                {displayName}
+              </h2>
             </div>
           </div>
 
+          {/* Bouton Hamburger de réduction Desktop / Fermeture Mobile */}
           <div className="flex items-center gap-1 shrink-0">
-            <ThemeToggle />
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden md:flex p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title={isCollapsed ? "Agrandir la barre latérale" : "Réduire la barre latérale (icônes seules)"}
+              >
+                {isCollapsed ? <PanelLeftOpen className="w-5 h-5 text-blue-600" /> : <PanelLeftClose className="w-5 h-5" />}
+              </button>
+            )}
+
+            {!isCollapsed && <ThemeToggle />}
+
             <button
               onClick={onClose}
               className="md:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
@@ -207,84 +159,58 @@ export default function RouterSidebar({
           </div>
         </div>
 
-        {/* Modal d'édition du Nom Programmable */}
-        {isEditingName && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                  <Pencil className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Nom de l'Espace Hotspot</span>
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingName(false)}
-                  className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveName} className="space-y-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Nom commercial affiché (ex: Hotspot Marché, Wi-Fi Hôtel)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="Ex: Hotspot Zone Sud"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Ce nom apparaîtra dans votre menu et sur vos tickets imprimés.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingName(false)}
-                    className="px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>{isSaving ? "Enregistrement..." : "Enregistrer"}</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
         {/* Back to Global Hub */}
-        <div className="p-3">
+        <div className={`p-3 ${isCollapsed ? "flex justify-center" : ""}`}>
           <Link
             href="/dashboard"
             onClick={onClose}
-            className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors group cursor-pointer"
+            title="Retour au Hub Principal TikZone"
+            className={`flex items-center gap-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors group cursor-pointer ${
+              isCollapsed ? "p-2.5 justify-center" : "px-3 py-2"
+            }`}
           >
-            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            <span>← Retour au Hub Principal</span>
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+            {!isCollapsed && <span>← Retour au Hub</span>}
           </Link>
         </div>
 
         {/* Navigation List */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 py-1.5">
-            Gestion Hotspot
-          </div>
+          {!isCollapsed && (
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 py-1.5">
+              Gestion Hotspot
+            </div>
+          )}
 
           {navItems.map((item, idx) => {
             if (item.isGroup && item.children) {
+              if (isCollapsed) {
+                // En mode replié, afficher directement les icônes enfants pour accès direct en 1-clic
+                return (
+                  <div key={idx} className="space-y-1 py-1 border-y border-slate-100 dark:border-slate-800/80">
+                    {item.children.map((sub) => {
+                      const isSubActive = pathname === sub.href;
+                      const SubIcon = sub.icon;
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          onClick={onClose}
+                          title={sub.label}
+                          className={`flex items-center justify-center p-2.5 rounded-xl transition-all cursor-pointer ${
+                            isSubActive
+                              ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900"
+                          }`}
+                        >
+                          <SubIcon className="w-5 h-5" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
               return (
                 <div key={idx} className="space-y-1">
                   <button
@@ -338,29 +264,35 @@ export default function RouterSidebar({
                 key={item.href || idx}
                 href={item.href || "#"}
                 onClick={onClose}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                title={item.label}
+                className={`flex items-center gap-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isCollapsed ? "p-2.5 justify-center" : "px-3 py-2.5"
+                } ${
                   isActive
                     ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
                     : "text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
-                <span>{item.label}</span>
+                <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-slate-400"}`} />
+                {!isCollapsed && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        {/* WhatsApp Support Button */}
+        {/* Support WhatsApp */}
         <div className="p-3 border-t border-slate-100 dark:border-slate-800">
           <a
             href="https://wa.me/22399281899?text=Bonjour%20TikZone%2C%20j%27ai%20besoin%20d%27aide%20sur%20mon%20routeur"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 transition-colors"
+            title="Support Technique WhatsApp"
+            className={`flex items-center gap-2 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 transition-colors ${
+              isCollapsed ? "p-2.5 justify-center" : "px-3 py-2"
+            }`}
           >
-            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>Support Technique WhatsApp</span>
+            <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+            {!isCollapsed && <span>Support WhatsApp</span>}
           </a>
         </div>
       </aside>

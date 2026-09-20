@@ -198,7 +198,8 @@ class MikrotikService:
                             "name": p.get("name", ""),
                             "rate_limit": p.get("rate-limit", "Illimité"),
                             "shared_users": p.get("shared-users", "1"),
-                            "session_timeout": p.get("session-timeout", "-"),
+                            "session_timeout": cls._extract_profile_expiration(p),
+                            "price": cls._extract_profile_price(p),
                             "status_autorefresh": p.get("status-autorefresh", "-"),
                         }
                         for p in profiles_res
@@ -207,7 +208,26 @@ class MikrotikService:
                 except Exception:
                     profiles = []
 
+            # Mapping des utilisateurs vers profil et limite-uptime
+            user_prof_map = cache.get(f"router_user_prof_map_{router.id}")
+            if user_prof_map is None:
+                try:
+                    raw_users_sample = api.get_resource("/ip/hotspot/user").get()
+                    user_prof_map = {
+                        u.get("name"): {
+                            "profile": u.get("profile", "default"),
+                            "limit_uptime": u.get("limit-uptime", ""),
+                            "comment": u.get("comment", ""),
+                        }
+                        for u in raw_users_sample
+                    }
+                    cache.set(f"router_user_prof_map_{router.id}", user_prof_map, timeout=60)
+                except Exception:
+                    user_prof_map = {}
+
             pool.disconnect()
+
+            prof_prices_map = {p.get("name"): p.get("price", "100 FCFA") for p in profiles}
 
             active_list = []
             for u in active_users[:100]:
@@ -218,9 +238,18 @@ class MikrotikService:
                 if not s_left or s_left in ["0s", "none", ""]:
                     s_left = "Illimité"
 
+                username = u.get("user", "")
+                user_info = (user_prof_map or {}).get(username, {})
+                assigned_profile = u.get("profile") or user_info.get("profile", "default")
+                limit_uptime = user_info.get("limit_uptime") or "-"
+                price_tag = prof_prices_map.get(assigned_profile, "100 FCFA")
+
                 active_list.append({
                     "id": u.get("id"),
-                    "user": u.get("user", ""),
+                    "user": username,
+                    "profile": assigned_profile,
+                    "price": price_tag,
+                    "limit_uptime": limit_uptime,
                     "address": u.get("address", ""),
                     "mac_address": u.get("mac-address", ""),
                     "uptime": u.get("uptime", "0s"),
@@ -320,10 +349,19 @@ class MikrotikService:
 
                     user, ip = cls._parse_log_user_and_ip(msg, topics)
 
+                    category = "general"
+                    if "hotspot" in topics:
+                        category = "hotspot"
+                    elif "system" in topics:
+                        category = "system"
+                    elif "account" in topics:
+                        category = "account"
+
                     filtered.append({
                         "id": item.get("id"),
                         "time": time_str,
                         "topics": topics,
+                        "category": category,
                         "message": msg,
                         "user": user,
                         "ip": ip,
@@ -385,19 +423,21 @@ class MikrotikService:
         if idle_to and idle_to not in ["-", "0s", "none", ""]:
             return f"{idle_to} (Inactivité)"
 
+        name = p.get("name", "")
         comment = p.get("comment", "")
-        if comment:
-            import re
-            match = re.search(r"\b(\d+\s*(?:m|h|d|j|semaine|mois|min|heure|jour))\b", comment, re.IGNORECASE)
-            if match:
-                return match.group(1).strip()
+        combined = f"{name} {comment}"
+        import re
+
+        # Chercher des durées types : 1h, 2h, 3h, 24h, 1d, 7d, 30d, 1 jour, 2 heures, 30m
+        match = re.search(r"\b(\d+\s*(?:h|d|j|semaine|mois|min|heure|jour|journee|sem|m))\b", combined, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
 
         on_login = p.get("on-login", "")
         if on_login:
-            import re
-            match = re.search(r"(\d+[hmdw])", on_login)
-            if match:
-                return match.group(1)
+            match_login = re.search(r"(\d+[hmdw])", on_login)
+            if match_login:
+                return match_login.group(1)
 
         return "Illimitée (Session continue)"
 
@@ -441,14 +481,42 @@ class MikrotikService:
 
     @staticmethod
     def _extract_profile_price(p: Dict[str, Any]) -> str:
-        """Extrait le prix du forfait depuis le commentaire ou les attributs du profil."""
+        """Extrait le prix du forfait depuis le nom, le commentaire ou les attributs du profil."""
+        name = p.get("name", "")
         comment = p.get("comment", "")
-        if comment:
-            import re
-            m = re.search(r"(?:price=|\b)(\d{2,6})\s*(?:fcfa|cfa|f|\$)?", comment, re.IGNORECASE)
-            if m:
-                return f"{m.group(1)} FCFA"
+        combined = f"{name} {comment}"
+        import re
+
+        # 1. Chercher un prix explicite : 100 FCFA, 500F, 200 CFA, price=500
+        m = re.search(r"(?:price\s*[:=]\s*|[\b_])(\d{2,6})\s*(?:fcfa|cfa|f|\$)\b", combined, re.IGNORECASE)
+        if m:
+            return f"{m.group(1)} FCFA"
+
+        # 2. Chercher un nombre avec F à la fin : ex "100F", "500F", "2000F"
+        m2 = re.search(r"(\d{2,6})\s*f\b", combined, re.IGNORECASE)
+        if m2:
+            return f"{m2.group(1)} FCFA"
+
+        # 3. Chercher dans le commentaire "XXX FCFA"
+        m3 = re.search(r"(\d{2,6})\s*(?:fcfa|cfa)", comment, re.IGNORECASE)
+        if m3:
+            return f"{m3.group(1)} FCFA"
+
+        # 4. Si le nom contient un nombre isolé entre 2 et 5 chiffres (ex: "Forfait 200")
+        m4 = re.search(r"\b(\d{2,5})\b", name)
+        if m4:
+            return f"{m4.group(1)} FCFA"
+
         return "100 FCFA"
+
+    @classmethod
+    def _extract_price_int(cls, p: Dict[str, Any]) -> int:
+        """Retourne le prix numérique en FCFA d'un profil."""
+        price_str = cls._extract_profile_price(p)
+        try:
+            return int(price_str.replace("FCFA", "").strip())
+        except (ValueError, AttributeError):
+            return 100
 
     @classmethod
     def get_profiles(cls, router: Router) -> List[Dict[str, Any]]:
@@ -590,12 +658,20 @@ class MikrotikService:
 
             raw_users = api.get_resource("/ip/hotspot/user").get()
             active_users = api.get_resource("/ip/hotspot/active").get()
+            profiles_res = api.get_resource("/ip/hotspot/user/profile").get()
             pool.disconnect()
+
+            # 1. Indexation des profils pour calcul précis du prix
+            profile_prices: Dict[str, int] = {}
+            for p in profiles_res:
+                profile_prices[p.get("name", "")] = cls._extract_price_int(p)
 
             now = datetime.datetime.now()
             today_str = now.strftime("%Y-%m-%d")
             yesterday_str = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
             month_str = now.strftime("%Y-%m")
+
+            active_user_set = {u.get("user") for u in active_users if u.get("user")}
 
             today_revenue = 0
             yesterday_revenue = 0
@@ -607,28 +683,42 @@ class MikrotikService:
             month_count = 0
 
             sales_history = []
-            batches_map = {}
 
-            # Analyse des tickets (commentaires contenant le prix et le lot)
-            for u in reversed(raw_users[-500:]):
+            # Analyse des tickets (utilisateurs Hotspot)
+            for u in reversed(raw_users):
                 comment = u.get("comment", "")
-                price = 100  # Fallback
+                username = u.get("name", "")
+                u_profile = u.get("profile", "default")
 
-                # Extraction du prix (ex: "Lot TZ-1234 | 200 FCFA" ou "100 FCFA")
-                m_price = re.search(r"(\d{2,6})\s*(?:fcfa|cfa|f|\$)?", comment, re.IGNORECASE)
-                if m_price:
-                    try:
-                        price = int(m_price.group(1))
-                    except ValueError:
+                # Extraction du prix : priorité au profil, puis au commentaire si mention explicite
+                price = profile_prices.get(u_profile)
+                if price is None or price <= 0:
+                    # Chercher explicitement un montant avec FCFA / CFA
+                    m_price = re.search(r"(\d{2,6})\s*(?:fcfa|cfa)", comment, re.IGNORECASE)
+                    if m_price:
+                        try:
+                            price = int(m_price.group(1))
+                        except ValueError:
+                            price = 100
+                    else:
                         price = 100
 
                 # Extraction du lot
                 m_batch = re.search(r"(TZ-\d{4})", comment)
-                batch_id = m_batch.group(1) if m_batch else "Vente Directe"
+                batch_id = m_batch.group(1) if m_batch else (comment[:25] if comment else "Vente Directe")
 
-                # Détection de date si présente
+                # Détection de la date
                 m_date = re.search(r"(\d{4}-\d{2}-\d{2})", comment)
-                item_date = m_date.group(1) if m_date else today_str
+                is_currently_active = username in active_user_set
+                has_traffic = u.get("bytes-in", "0") not in ["0", ""] or u.get("uptime", "0s") not in ["0s", ""]
+
+                if m_date:
+                    item_date = m_date.group(1)
+                elif is_currently_active:
+                    item_date = today_str
+                else:
+                    # Tickets historiques sans date : ne pas les forcer à today_str
+                    item_date = f"{month_str}-01"
 
                 if item_date == today_str:
                     today_revenue += price
@@ -643,27 +733,34 @@ class MikrotikService:
 
                 total_revenue += price
 
-                sales_history.append({
-                    "id": u.get("id"),
-                    "code": u.get("name"),
-                    "profile": u.get("profile", "default"),
-                    "price": price,
-                    "batch_id": batch_id,
-                    "date": item_date,
-                    "uptime": u.get("uptime", "0s"),
-                    "consumed": u.get("bytes-in", "0") != "0" or u.get("uptime", "0s") != "0s",
-                })
+                if len(sales_history) < 60:
+                    sales_history.append({
+                        "id": u.get("id"),
+                        "code": username,
+                        "profile": u_profile,
+                        "price": price,
+                        "batch_id": batch_id,
+                        "date": item_date,
+                        "uptime": u.get("uptime", "0s"),
+                        "consumed": has_traffic or is_currently_active,
+                    })
+
+            # Si aucun ticket n'a de date d'aujourd'hui explicite dans le commentaire,
+            # baser les ventes du jour sur les sessions actives réelles
+            if today_count == 0 and len(active_users) > 0:
+                today_count = len(active_users)
+                today_revenue = sum(profile_prices.get(u.get("profile", "default"), 100) for u in active_users)
 
             report_data = {
-                "today_revenue": today_revenue or (len(active_users) * 100),
-                "today_count": today_count or len(active_users),
+                "today_revenue": today_revenue,
+                "today_count": today_count,
                 "yesterday_revenue": yesterday_revenue,
                 "yesterday_count": yesterday_count,
-                "month_revenue": month_revenue or (total_revenue // 2 if total_revenue else 15000),
-                "month_count": month_count or len(raw_users),
+                "month_revenue": month_revenue if month_revenue > 0 else total_revenue,
+                "month_count": month_count if month_count > 0 else len(raw_users),
                 "total_users": len(raw_users),
                 "active_sessions": len(active_users),
-                "sales_history": sales_history[:50],
+                "sales_history": sales_history,
             }
             cache.set(cache_key, report_data, timeout=30)
             return report_data
@@ -720,29 +817,49 @@ class MikrotikService:
         time_limit: str = "1h",
         prefix: str = "",
         code_length: int = 6,
+        code_format: str = "alpha_upper",
         price: int = 100,
+        comment: str = "",
     ) -> List[Dict[str, Any]]:
-        """Génère un lot de tickets avec code unique en 1 clic."""
+        """Génère un lot de tickets avec code unique en 1 clic (longueur 4, 6 ou 8, charset au choix)."""
         import random
+        import datetime
+
+        # Validation stricte de la longueur demandée (4, 6 ou 8)
+        valid_length = code_length if code_length in [4, 6, 8] else 6
+
+        # Sélection du jeu de caractères (en excluant les caractères ambigus comme 0, O, 1, I, l)
+        if code_format == "numeric":
+            chars = "0123456789"
+        elif code_format == "alpha_lower":
+            chars = "23456789abcdefghkmnpqrstuvwxyz"
+        else:  # "alpha_upper" par défaut
+            chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 
         pool = cls.get_api_connection(router)
         api = pool.get_api()
         user_res = api.get_resource("/ip/hotspot/user")
 
-        chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
         generated = []
         batch_id = f"TZ-{random.randint(1000, 9999)}"
+        today_str = datetime.date.today().strftime("%Y-%m-%d")
+
+        # Commentaire du ticket : libre ou formaté proprement avec date et montant
+        if comment and comment.strip():
+            base_comment = comment.strip()
+            ticket_comment = f"{base_comment} | {batch_id} | {today_str} | {price} FCFA"
+        else:
+            ticket_comment = f"Lot {batch_id} | {today_str} | {price} FCFA"
 
         for _ in range(count):
-            random_code = "".join(random.choices(chars, k=code_length))
+            random_code = "".join(random.choices(chars, k=valid_length))
             code = f"{prefix}{random_code}" if prefix else random_code
-            comment = f"Lot {batch_id} | {price} FCFA"
 
             params = {
                 "name": code,
                 "password": code,
                 "profile": profile,
-                "comment": comment,
+                "comment": ticket_comment,
             }
             if time_limit:
                 params["limit-uptime"] = time_limit
@@ -759,6 +876,8 @@ class MikrotikService:
         pool.disconnect()
         cache.delete(f"router_user_count_{router.id}")
         cache.delete(f"router_hs_overview_{router.id}")
+        cache.delete(f"router_users_list_{router.id}")
+        cache.delete(f"router_sales_report_{router.id}")
         return generated
 
     @classmethod

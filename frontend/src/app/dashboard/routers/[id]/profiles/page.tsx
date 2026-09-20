@@ -85,7 +85,10 @@ export default function RouterProfilesPage({ params }: PageProps) {
     setName(p.name);
     setRateLimit(p.rate_limit && p.rate_limit !== "Illimité" ? p.rate_limit : "");
     setSharedUsers(parseInt(p.shared_users) || 1);
-    setSessionTimeout(p.raw_session_timeout && p.raw_session_timeout !== "-" ? p.raw_session_timeout : "");
+    const initialTimeout = p.raw_session_timeout && p.raw_session_timeout !== "-" 
+      ? p.raw_session_timeout 
+      : (p.session_timeout && !p.session_timeout.includes("Illimit") ? p.session_timeout : "");
+    setSessionTimeout(initialTimeout);
     const parsedPrice = parseInt(p.price) || 100;
     setPrice(parsedPrice);
     setErrorMsg(null);
