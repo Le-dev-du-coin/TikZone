@@ -114,7 +114,7 @@ class VpnCredential(models.Model):
     vpn_server = models.CharField(
         "Serveur VPN",
         max_length=100,
-        default=getattr(settings, "VPN_SERVER_HOST", "vpn.mikroot.app"),
+        default="187.7.20.53",
     )
     # Identifiants L2TP / IPsec (ROS 6)
     vpn_user = models.CharField("Utilisateur VPN L2TP", max_length=64, unique=True)
