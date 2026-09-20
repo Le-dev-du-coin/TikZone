@@ -11,6 +11,8 @@ import {
   Copy,
   Cpu,
   ExternalLink,
+  Eye,
+  EyeOff,
   HardDrive,
   Info,
   KeyRound,
@@ -22,6 +24,7 @@ import {
   RotateCcw,
   ScrollText,
   Server,
+  Shield,
   ShieldAlert,
   Sparkles,
   Terminal,
@@ -69,6 +72,13 @@ export default function RouterDashboardPage({ params }: PageProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showGenModal, setShowGenModal] = useState(false);
   const [showRebootConfirm, setShowRebootConfirm] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+
+  // Formulaire Identifiants MikroTik (API)
+  const [apiUserInput, setApiUserInput] = useState("admin");
+  const [apiPasswordInput, setApiPasswordInput] = useState("");
+  const [showApiPassword, setShowApiPassword] = useState(false);
+  const [isSavingCredentials, setIsSavingCredentials] = useState(false);
 
   // Formulaire d'ajout
   const [addName, setAddName] = useState("");
@@ -104,7 +114,11 @@ export default function RouterDashboardPage({ params }: PageProps) {
         } catch {}
       }
       const current = routersList.find((r) => r.id === routerId);
-      if (current) setRouter(current);
+      if (current) {
+        setRouter(current);
+        if (current.api_user) setApiUserInput(current.api_user);
+        if (typeof current.api_password === "string") setApiPasswordInput(current.api_password);
+      }
       if (sysInfo) setTelemetry(sysInfo);
       if (hsOverview) setHotspot(hsOverview);
       if (logList) setLogs(logList.results || logList);
@@ -224,6 +238,27 @@ export default function RouterDashboardPage({ params }: PageProps) {
     }
   };
 
+  const handleSaveCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingCredentials(true);
+    setActionError(null);
+    try {
+      const res = await api.updateRouter(routerId, {
+        api_user: apiUserInput.trim() || "admin",
+        api_password: apiPasswordInput,
+      });
+      setRouter(res.router);
+      setShowCredentialsModal(false);
+      setActionSuccess("Identifiants MikroTik enregistrés ! Tentative de connexion...");
+      setTimeout(() => setActionSuccess(null), 5000);
+      await loadData();
+    } catch (err: any) {
+      alert("Erreur lors de la mise à jour des identifiants : " + (err.message || "Erreur inconnue"));
+    } finally {
+      setIsSavingCredentials(false);
+    }
+  };
+
   const isOnline = telemetry?.online ?? false;
   const routerDisplayName = router?.hotspot_name || router?.name || "";
 
@@ -332,6 +367,15 @@ export default function RouterDashboardPage({ params }: PageProps) {
 
           <button
             type="button"
+            onClick={() => setShowCredentialsModal(true)}
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer transition-colors"
+            title="Modifier les identifiants MikroTik"
+          >
+            <KeyRound className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          </button>
+
+          <button
+            type="button"
             onClick={() => loadData()}
             disabled={refreshing}
             className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-300 cursor-pointer"
@@ -377,23 +421,34 @@ export default function RouterDashboardPage({ params }: PageProps) {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                const scriptToCopy = router?.vpn?.mikrotik_script || router?.script || "";
-                if (scriptToCopy) {
-                  navigator.clipboard.writeText(scriptToCopy);
-                  setCopiedScript(true);
-                  setTimeout(() => setCopiedScript(false), 2000);
-                } else {
-                  alert("Script introuvable. Veuillez recharger la page.");
-                }
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-md transition-all self-start sm:self-center cursor-pointer"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span>{copiedScript ? "Script copié !" : "Copier le script MikroTik"}</span>
-            </button>
+            <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowCredentialsModal(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Mes identifiants MikroTik</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const scriptToCopy = router?.vpn?.mikrotik_script || router?.script || "";
+                  if (scriptToCopy) {
+                    navigator.clipboard.writeText(scriptToCopy);
+                    setCopiedScript(true);
+                    setTimeout(() => setCopiedScript(false), 2000);
+                  } else {
+                    alert("Script introuvable. Veuillez recharger la page.");
+                  }
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-md transition-all self-start sm:self-center cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedScript ? "Script copié !" : "Copier le script MikroTik"}</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
@@ -1021,6 +1076,109 @@ export default function RouterDashboardPage({ params }: PageProps) {
                 <span>{actionLoading ? "Envoi de l'ordre..." : "Confirmer le redémarrage"}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIGURATION IDENTIFIANTS API MIKROTIK */}
+      {showCredentialsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-white text-base">
+                    Accès API MikroTik
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Routeur : <strong className="text-slate-800 dark:text-slate-200">{routerDisplayName}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCredentialsModal(false)}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Renseignez les identifiants d'administration configurés sur votre routeur MikroTik (ceux utilisés avec Winbox). TikZone s'y connecte de manière sécurisée via le tunnel WireGuard.
+            </p>
+
+            <form onSubmit={handleSaveCredentials} className="space-y-4 pt-1">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Nom d'utilisateur (Login) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={apiUserInput}
+                  onChange={(e) => setApiUserInput(e.target.value)}
+                  placeholder="admin"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-white font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Mot de passe MikroTik
+                </label>
+                <div className="relative">
+                  <input
+                    type={showApiPassword ? "text" : "password"}
+                    value={apiPasswordInput}
+                    onChange={(e) => setApiPasswordInput(e.target.value)}
+                    placeholder="Laisser vide si aucun mot de passe"
+                    className="w-full px-3.5 py-2.5 pr-10 text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-white font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiPassword(!showApiPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  >
+                    {showApiPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Par défaut sur RouterOS neuf, le mot de passe est vide.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowCredentialsModal(false)}
+                  disabled={isSavingCredentials}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingCredentials}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  {isSavingCredentials ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Connexion en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Enregistrer et Tester</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

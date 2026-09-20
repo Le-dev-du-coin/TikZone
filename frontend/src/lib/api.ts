@@ -31,6 +31,8 @@ export interface RouterData {
   id: string;
   name: string;
   hotspot_name?: string;
+  api_user?: string;
+  api_password?: string;
   status: "ACTIVE" | "EXPIRED" | "SUSPENDED";
   mikhmon_instance: string;
   mikhmon_name?: string;
@@ -124,11 +126,17 @@ export const api = {
     return await res.json();
   },
 
-  async createRouter(name: string, instanceId: string, autoRenew = true) {
+  async createRouter(name: string, instanceId: string, autoRenew = true, apiUser = "admin", apiPassword = "") {
     const res = await fetch(`${API_BASE}/routers/create/`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ name, mikhmon_instance_id: instanceId, auto_renew: autoRenew }),
+      body: JSON.stringify({
+        name,
+        mikhmon_instance_id: instanceId,
+        auto_renew: autoRenew,
+        api_user: apiUser,
+        api_password: apiPassword,
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -168,7 +176,7 @@ export const api = {
     return data;
   },
 
-  async updateRouter(routerId: string, data: { name?: string; hotspot_name?: string }) {
+  async updateRouter(routerId: string, data: { name?: string; hotspot_name?: string; api_user?: string; api_password?: string }) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/`, {
       method: "PATCH",
       headers: getAuthHeaders(),

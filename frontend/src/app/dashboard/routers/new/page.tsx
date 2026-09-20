@@ -10,12 +10,15 @@ import {
   ArrowRight,
   CheckCircle2,
   Copy,
+  Eye,
+  EyeOff,
   Info,
   Layers,
   Plus,
   PlusCircle,
   Router as RouterIcon,
   Server,
+  Shield,
   ShieldCheck,
   Sparkles,
   Terminal,
@@ -68,6 +71,9 @@ function NewRouterForm() {
     return "";
   });
   const [routerName, setRouterName] = useState("");
+  const [apiUser, setApiUser] = useState("admin");
+  const [apiPassword, setApiPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [autoRenew, setAutoRenew] = useState(true);
   const [balance, setBalance] = useState<number>(() => {
     if (typeof window !== "undefined") {
@@ -136,7 +142,13 @@ function NewRouterForm() {
     setErrorMessage(null);
 
     try {
-      const res = await api.createRouter(routerName.trim(), selectedMikhmon, autoRenew);
+      const res = await api.createRouter(
+        routerName.trim(),
+        selectedMikhmon,
+        autoRenew,
+        apiUser.trim() || "admin",
+        apiPassword
+      );
       const vpnCred = res.router.vpn;
       const targetInst = instances.find((i) => i.id === selectedMikhmon);
 
@@ -345,6 +357,55 @@ function NewRouterForm() {
               className="w-full px-4 py-3.5 text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900 dark:text-white transition-all"
             />
             <p className="text-[11px] text-slate-500 dark:text-slate-400">Lettres minuscules, chiffres et tirets uniquement.</p>
+          </div>
+
+          {/* IDENTIFIANTS API MIKROTIK */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700/80 space-y-3.5">
+            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span>Accès API de votre MikroTik</span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Ces identifiants permettent à TikZone de récupérer la télémétrie (CPU, Uptime) et d'automatiser les tickets. Renseignez ceux configurés dans votre Winbox.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Nom d'utilisateur MikroTik *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={apiUser}
+                  onChange={(e) => setApiUser(e.target.value)}
+                  placeholder="admin"
+                  className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Mot de passe MikroTik
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={apiPassword}
+                    onChange={(e) => setApiPassword(e.target.value)}
+                    placeholder="Laisser vide si aucun mot de passe"
+                    className="w-full px-3.5 py-2.5 pr-10 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-2xl">

@@ -33,6 +33,8 @@ class RouterSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "hotspot_name",
+            "api_user",
+            "api_password",
             "status",
             "mikhmon_instance",
             "mikhmon_name",
@@ -51,4 +53,6 @@ class RouterSerializer(serializers.ModelSerializer):
 class CreateRouterSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=50)
     mikhmon_instance_id = serializers.UUIDField()
+    api_user = serializers.CharField(max_length=50, default="admin", required=False)
+    api_password = serializers.CharField(max_length=128, required=False, allow_blank=True, default="")
     auto_renew = serializers.BooleanField(default=True)

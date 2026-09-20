@@ -57,6 +57,8 @@ class Router(models.Model):
     )
     name = models.CharField("Nom du Routeur", max_length=100)
     hotspot_name = models.CharField("Nom Commercial Hotspot", max_length=100, blank=True, default="")
+    api_user = models.CharField("Nom d'utilisateur API RouterOS", max_length=50, default="admin")
+    api_password = models.CharField("Mot de passe API RouterOS", max_length=128, blank=True, default="")
     status = models.CharField(
         "Statut",
         max_length=20,

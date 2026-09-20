@@ -41,9 +41,11 @@ class MikrotikService:
                 f"Circuit breaker actif: Le routeur '{router.name}' est actuellement hors-ligne."
             )
 
-        # Mot de passe admin hérité de l'instance ou '123' par défaut
-        admin_password = getattr(router.mikhmon_instance, "admin_password", "") or "123"
-        username = "admin"
+        # Identifiants API RouterOS spécifiques au routeur (ou fallback instance/défaut)
+        username = getattr(router, "api_user", "") or "admin"
+        admin_password = getattr(router, "api_password", "")
+        if admin_password is None:
+            admin_password = getattr(router.mikhmon_instance, "admin_password", "") or ""
 
         target_host = vpn.assigned_ip
         target_port = 8728

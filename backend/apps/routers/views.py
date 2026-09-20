@@ -32,6 +32,8 @@ class CreateRouterView(APIView):
 
         instance_id = serializer.validated_data["mikhmon_instance_id"]
         router_name = serializer.validated_data["name"].strip()
+        api_user = serializer.validated_data.get("api_user", "admin") or "admin"
+        api_password = serializer.validated_data.get("api_password", "") or ""
         auto_renew = serializer.validated_data.get("auto_renew", True)
 
         try:
@@ -72,6 +74,8 @@ class CreateRouterView(APIView):
                 user=request.user,
                 mikhmon_instance=mikhmon_instance,
                 name=router_name,
+                api_user=api_user,
+                api_password=api_password,
                 price_per_month=price,
                 auto_renew=auto_renew,
                 expires_at=expires_at,
@@ -136,6 +140,16 @@ class RouterDetailView(APIView):
         new_hotspot_name = request.data.get("hotspot_name")
         if new_hotspot_name is not None:
             router.hotspot_name = new_hotspot_name.strip()
+
+        new_api_user = request.data.get("api_user")
+        if new_api_user is not None:
+            router.api_user = new_api_user.strip() or "admin"
+
+        new_api_password = request.data.get("api_password")
+        if new_api_password is not None:
+            router.api_password = new_api_password.strip()
+            # Nettoyer le circuit breaker pour permettre un test de connexion immédiat
+            cache.delete(f"mikrotik_offline_cb_{router.id}")
 
         router.save()
         return Response({
