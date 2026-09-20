@@ -254,15 +254,17 @@ class PingRouterView(APIView):
                 "detail": f"Routeur '{router.name}' en ligne ! Latence: {latency}.",
                 "last_ping": router.last_ping,
                 "status": "ONLINE",
+                "online": True,
                 "latency": latency,
             })
         else:
             return Response(
                 {
-                    "detail": f"Le routeur '{router.name}' ({target_ip}) ne répond pas. Vérifiez son alimentation et sa liaison WireGuard/L2TP.",
+                    "detail": f"Le routeur '{router.name}' ({target_ip}) ne répond pas au ping. Vérifiez son alimentation et sa connexion internet.",
                     "status": "OFFLINE",
+                    "online": False,
                 },
-                status=status.HTTP_504_GATEWAY_TIMEOUT,
+                status=status.HTTP_200_OK,
             )
 
 

@@ -188,7 +188,10 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.detail || "Ping échoué");
+      throw new Error(data.detail || `Erreur serveur (${res.status})`);
+    }
+    if (data.status === "OFFLINE" || data.online === false) {
+      throw new Error(data.detail || "Le routeur ne répond pas au ping.");
     }
     return data;
   },

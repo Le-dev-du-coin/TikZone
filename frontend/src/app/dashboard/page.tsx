@@ -218,10 +218,10 @@ export default function ClientDashboardPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Toast Notification */}
+      {/* Toast Notification (Haut Droite pour ne jamais chevaucher le bouton WhatsApp) */}
       {toastMessage && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold animate-in slide-in-from-bottom-5 ${
+          className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold animate-in slide-in-from-top-5 duration-200 ${
             toastMessage.type === "success"
               ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border border-slate-700"
               : "bg-rose-600 text-white border border-rose-700"
