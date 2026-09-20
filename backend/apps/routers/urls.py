@@ -12,6 +12,7 @@ from .views import (
     RouterListView,
     RouterLogsView,
     RouterRebootView,
+    RouterSalesReportView,
     RouterSystemInfoView,
     RouterUpdateUserLimitsView,
     VpnSyncListView,
@@ -31,6 +32,7 @@ urlpatterns = [
     re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/generate/?$", RouterGenerateTicketsView.as_view(), name="router-hotspot-generate"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/profiles/?$", RouterHotspotProfilesView.as_view(), name="router-hotspot-profiles"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/active/(?P<active_id>[^/]+)/disconnect/?$", RouterDisconnectActiveView.as_view(), name="router-disconnect-active"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/reports/?$", RouterSalesReportView.as_view(), name="router-sales-report"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/logs/?$", RouterLogsView.as_view(), name="router-logs"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/reboot/?$", RouterRebootView.as_view(), name="router-reboot"),
 ]

@@ -259,6 +259,46 @@ export const api = {
     return await res.json();
   },
 
+  async createRouterProfile(routerId: string, data: { name: string; rate_limit?: string; shared_users?: number; session_timeout?: string; price?: number; comment?: string }) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur lors de la création du profil");
+    return result;
+  },
+
+  async updateRouterProfile(routerId: string, data: { id: string; name?: string; rate_limit?: string; shared_users?: number; session_timeout?: string; price?: number; comment?: string }) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur lors de la modification du profil");
+    return result;
+  },
+
+  async deleteRouterProfile(routerId: string, profileId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/?id=${encodeURIComponent(profileId)}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur lors de la suppression du profil");
+    return result;
+  },
+
+  async getRouterSalesReport(routerId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/reports/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur du rapport de ventes");
+    return await res.json();
+  },
+
   async getRouterLogs(routerId: string, limit = 50) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/logs/?limit=${limit}`, {
       headers: getAuthHeaders(),

@@ -452,6 +452,110 @@ class RouterHotspotProfilesView(APIView):
         profiles = MikrotikService.get_profiles(router)
         return Response({"count": len(profiles), "results": profiles})
 
+    def post(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        name = request.data.get("name")
+        if not name:
+            return Response({"detail": "Le nom du profil est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+
+        rate_limit = request.data.get("rate_limit", "")
+        shared_users = int(request.data.get("shared_users", 1))
+        session_timeout = request.data.get("session_timeout", "")
+        price = int(request.data.get("price", 100))
+        comment = request.data.get("comment", "")
+
+        try:
+            res = MikrotikService.add_profile(
+                router,
+                name=name,
+                rate_limit=rate_limit,
+                shared_users=shared_users,
+                session_timeout=session_timeout,
+                price=price,
+                comment=comment,
+            )
+            return Response(res, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"detail": f"Erreur de création : {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        profile_id = request.data.get("id")
+        if not profile_id:
+            return Response({"detail": "L'identifiant du profil est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+
+        name = request.data.get("name", "")
+        rate_limit = request.data.get("rate_limit", "")
+        shared_users = int(request.data.get("shared_users")) if "shared_users" in request.data else None
+        session_timeout = request.data.get("session_timeout", "")
+        price = int(request.data.get("price")) if "price" in request.data else None
+        comment = request.data.get("comment", "")
+
+        try:
+            MikrotikService.update_profile(
+                router,
+                profile_id=profile_id,
+                name=name,
+                rate_limit=rate_limit,
+                shared_users=shared_users,
+                session_timeout=session_timeout,
+                price=price,
+                comment=comment,
+            )
+            return Response({"detail": "Profil mis à jour avec succès."})
+        except Exception as e:
+            return Response({"detail": f"Erreur de modification : {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        profile_id = request.query_params.get("id") or request.data.get("id")
+        if not profile_id:
+            return Response({"detail": "L'identifiant du profil à supprimer est requis."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            MikrotikService.delete_profile(router, profile_id=profile_id)
+            return Response({"detail": "Profil supprimé avec succès."})
+        except Exception as e:
+            return Response({"detail": f"Erreur de suppression : {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RouterSalesReportView(APIView):
+    """Rapport de ventes Hotspot (CA jour, hier, mois, historique tickets)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        data = MikrotikService.get_sales_report(router)
+        return Response(data)
+
 
 class RouterLogsView(APIView):
     """Récupère le journal d'activité (Hotspot Log & System Log) en temps réel."""

@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Coins,
   Cpu,
   FileText,
   Gauge,
@@ -121,6 +122,11 @@ export default function RouterSidebar({
       href: `${basePath}/tickets`,
       label: "Générateur & Impression",
       icon: Printer,
+    },
+    {
+      href: `${basePath}/reports`,
+      label: "Rapports & Ventes",
+      icon: Coins,
     },
     {
       href: `${basePath}/logs`,
