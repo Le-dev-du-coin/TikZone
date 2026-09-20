@@ -209,24 +209,36 @@ class MikrotikService:
 
             pool.disconnect()
 
+            active_list = []
+            for u in active_users[:100]:
+                b_in = int(u.get("bytes-in", 0) or 0)
+                b_out = int(u.get("bytes-out", 0) or 0)
+                total_bytes = b_in + b_out
+                s_left = u.get("session-time-left", "").strip()
+                if not s_left or s_left in ["0s", "none", ""]:
+                    s_left = "Illimité"
+
+                active_list.append({
+                    "id": u.get("id"),
+                    "user": u.get("user", ""),
+                    "address": u.get("address", ""),
+                    "mac_address": u.get("mac-address", ""),
+                    "uptime": u.get("uptime", "0s"),
+                    "session_time_left": s_left,
+                    "idle_time": u.get("idle-time", "-"),
+                    "bytes_in": cls._format_bytes(b_in),
+                    "bytes_out": cls._format_bytes(b_out),
+                    "total_traffic": cls._format_bytes(total_bytes),
+                    "total_bytes_raw": total_bytes,
+                    "login_by": u.get("login-by", "http-chap"),
+                })
+
             res = {
                 "online": True,
                 "active_count": len(active_users),
                 "total_users_count": user_count,
                 "profiles_count": len(profiles),
-                "active_users": [
-                    {
-                        "id": u.get("id"),
-                        "user": u.get("user", ""),
-                        "address": u.get("address", ""),
-                        "mac_address": u.get("mac-address", ""),
-                        "uptime": u.get("uptime", ""),
-                        "bytes_in": cls._format_bytes(u.get("bytes-in", 0)),
-                        "bytes_out": cls._format_bytes(u.get("bytes-out", 0)),
-                        "login_by": u.get("login-by", ""),
-                    }
-                    for u in active_users[:50]
-                ],
+                "active_users": active_list,
             }
             cache.set(overview_cache_key, res, timeout=6)
             return res
@@ -240,9 +252,47 @@ class MikrotikService:
                 "error": str(e),
             }
 
+    @staticmethod
+    def _parse_log_user_and_ip(msg: str, topics: str) -> tuple:
+        """Extrait intelligemment l'utilisateur et l'adresse IP depuis un message de log RouterOS."""
+        import re
+        user = "-"
+        ip = "-"
+
+        # Motif 1: 'user admin logged in from 172.29.88.1 via api'
+        m = re.search(r"user\s+([^\s]+)\s+logged\s+in\s+from\s+([0-9\.]+)", msg, re.IGNORECASE)
+        if m:
+            return m.group(1), m.group(2)
+
+        # Motif 2: '25847856 (10.20.10.2): logged in' ou '37575942 (10.20.10.7): logged out'
+        m = re.search(r"^([^\s\(]+)\s*\(([0-9\.]+)\)", msg)
+        if m:
+            return m.group(1), m.group(2)
+
+        # Motif 3: Extraction d'une adresse IP dans le message
+        m_ip = re.search(r"\b([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\b", msg)
+        if m_ip:
+            ip = m_ip.group(1)
+
+        # Extraction de l'utilisateur si présent
+        words = msg.strip().split()
+        if words:
+            candidate = words[0].rstrip(":")
+            if candidate.lower() not in ["user", "system", "hotspot", "error", "warning", "info", "login"]:
+                user = candidate
+            elif "system" in topics:
+                user = "system"
+
+        return user, ip
+
     @classmethod
     def get_logs(cls, router: Router, limit: int = 50) -> List[Dict[str, Any]]:
-        """Récupère les entrées du journal Hotspot et système."""
+        """Récupère les entrées du journal Hotspot et système (avec cache 10s et extraction d'IP/User)."""
+        cache_key = f"router_logs_{router.id}_{limit}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         try:
             pool = cls.get_api_connection(router)
             api = pool.get_api()
@@ -258,7 +308,7 @@ class MikrotikService:
                 msg = item.get("message", "")
                 time_str = item.get("time", "")
 
-                if "hotspot" in topics or "account" in topics or "system" in topics:
+                if "hotspot" in topics or "account" in topics or "system" in topics or "user" in topics:
                     msg_lower = msg.lower()
                     status_type = "info"
                     if "failed" in msg_lower or "invalid" in msg_lower or "error" in msg_lower:
@@ -268,20 +318,61 @@ class MikrotikService:
                     elif "logged in" in msg_lower or "log in" in msg_lower:
                         status_type = "success"
 
+                    user, ip = cls._parse_log_user_and_ip(msg, topics)
+
                     filtered.append({
                         "id": item.get("id"),
                         "time": time_str,
                         "topics": topics,
                         "message": msg,
+                        "user": user,
+                        "ip": ip,
                         "status_type": status_type,
                     })
                     if len(filtered) >= limit:
                         break
 
+            cache.set(cache_key, filtered, timeout=10)
             return filtered
         except Exception as e:
             logger.warning(f"Erreur logs routeur {router.name}: {e}")
             return []
+
+    @classmethod
+    def update_user_limits(
+        cls,
+        router: Router,
+        username: str,
+        time_limit: str = "",
+        byte_limit: str = "",
+        comment: str = "",
+    ) -> bool:
+        """Modifie les limitations d'un ticket / utilisateur Hotspot (durée ou quota de données)."""
+        pool = cls.get_api_connection(router)
+        api = pool.get_api()
+        user_res = api.get_resource("/ip/hotspot/user")
+
+        found = user_res.get(name=username)
+        if not found:
+            pool.disconnect()
+            raise ValueError(f"Utilisateur ou ticket '{username}' introuvable.")
+
+        target_id = found[0].get("id")
+        params = {}
+        if time_limit:
+            params["limit-uptime"] = time_limit
+        if byte_limit:
+            params["limit-bytes-total"] = byte_limit
+        if comment:
+            params["comment"] = comment
+
+        if params:
+            user_res.set(id=target_id, **params)
+
+        pool.disconnect()
+        cache.delete(f"router_users_list_{router.id}")
+        cache.delete(f"router_hs_overview_{router.id}")
+        return True
 
     @staticmethod
     def _extract_profile_expiration(p: Dict[str, Any]) -> str:

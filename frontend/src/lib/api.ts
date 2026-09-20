@@ -277,6 +277,17 @@ export const api = {
     return result;
   },
 
+  async updateRouterUserLimits(routerId: string, username: string, data: { time_limit?: string; byte_limit?: string; comment?: string }) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/users/${encodeURIComponent(username)}/limits/`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur lors de la mise à jour des limites");
+    return result;
+  },
+
   async rebootRouter(routerId: string) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/reboot/`, {
       method: "POST",

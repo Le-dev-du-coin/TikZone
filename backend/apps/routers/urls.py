@@ -13,6 +13,7 @@ from .views import (
     RouterLogsView,
     RouterRebootView,
     RouterSystemInfoView,
+    RouterUpdateUserLimitsView,
     VpnSyncListView,
 )
 
@@ -26,6 +27,7 @@ urlpatterns = [
     re_path(r"^(?P<router_id>[0-9a-f-]+)/system-info/?$", RouterSystemInfoView.as_view(), name="router-system-info"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/overview/?$", RouterHotspotOverviewView.as_view(), name="router-hotspot-overview"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/users/?$", RouterHotspotUsersView.as_view(), name="router-hotspot-users"),
+    re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/users/(?P<username>[^/]+)/limits/?$", RouterUpdateUserLimitsView.as_view(), name="router-user-limits"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/generate/?$", RouterGenerateTicketsView.as_view(), name="router-hotspot-generate"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/profiles/?$", RouterHotspotProfilesView.as_view(), name="router-hotspot-profiles"),
     re_path(r"^(?P<router_id>[0-9a-f-]+)/hotspot/active/(?P<active_id>[^/]+)/disconnect/?$", RouterDisconnectActiveView.as_view(), name="router-disconnect-active"),

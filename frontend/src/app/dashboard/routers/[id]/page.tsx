@@ -74,7 +74,15 @@ export default function RouterDashboardPage({ params }: PageProps) {
     }
     return null;
   });
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`tikzone_cached_logs_${routerId}`);
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
   const [profiles, setProfiles] = useState<any[]>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -163,7 +171,13 @@ export default function RouterDashboardPage({ params }: PageProps) {
           localStorage.setItem(`tikzone_cached_hotspot_${routerId}`, JSON.stringify(hsOverview));
         } catch {}
       }
-      if (logList) setLogs(logList.results || logList);
+      if (logList) {
+        const parsedLogs = logList.results || logList;
+        setLogs(parsedLogs);
+        try {
+          localStorage.setItem(`tikzone_cached_logs_${routerId}`, JSON.stringify(parsedLogs));
+        } catch {}
+      }
       if (profList?.results) {
         setProfiles(profList.results);
         try {
@@ -756,14 +770,15 @@ export default function RouterDashboardPage({ params }: PageProps) {
             <thead className="bg-slate-50/70 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="px-4 py-3">Horodatage</th>
-                <th className="px-4 py-3">Utilisateur / IP</th>
+                <th className="px-4 py-3">Utilisateur / Ticket</th>
+                <th className="px-4 py-3">Adresse IP</th>
                 <th className="px-4 py-3">Message de l'événement</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-slate-400 font-sans">
+                  <td colSpan={4} className="px-4 py-6 text-center text-slate-400 font-sans">
                     Aucun événement récent enregistré sur le routeur.
                   </td>
                 </tr>
@@ -774,13 +789,21 @@ export default function RouterDashboardPage({ params }: PageProps) {
                   const isWarning = msgLower.includes("logged out") || msgLower.includes("timeout");
                   const isError = msgLower.includes("failed") || msgLower.includes("invalid");
 
+                  const displayUser = log.user && log.user !== "-" ? log.user : (log.message.split(" ")[0] || "-");
+                  const displayIp = log.ip && log.ip !== "-" ? log.ip : "-";
+
                   return (
                     <tr key={log.id || idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                       <td className="px-4 py-2.5 whitespace-nowrap text-slate-500 dark:text-slate-400 text-[11px]">
                         {log.time || "2026-09-18 20:56:13"}
                       </td>
                       <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">
-                        {log.message.split(" ")[0] || "1D65693894"}
+                        <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs">
+                          {displayUser}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300 text-xs">
+                        {displayIp}
                       </td>
                       <td className="px-4 py-2.5">
                         <span

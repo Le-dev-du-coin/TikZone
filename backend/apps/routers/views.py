@@ -507,3 +507,29 @@ class RouterRebootView(APIView):
         MikrotikService.reboot_router(router)
         return Response({"detail": f"Ordre de redémarrage envoyé avec succès au routeur '{router.name}'."})
 
+
+class RouterUpdateUserLimitsView(APIView):
+    """Ajustement des quotas (durée, volume Mo/Go) d'un utilisateur / ticket."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, router_id, username):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        time_limit = request.data.get("time_limit", "")
+        byte_limit = request.data.get("byte_limit", "")
+        comment = request.data.get("comment", "")
+
+        try:
+            MikrotikService.update_user_limits(
+                router, username=username, time_limit=time_limit, byte_limit=byte_limit, comment=comment
+            )
+            return Response({"detail": f"Limites de '{username}' mises à jour avec succès."})
+        except Exception as e:
+            return Response({"detail": f"Erreur : {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
