@@ -56,11 +56,43 @@ export default function RouterDashboardPage({ params }: PageProps) {
     }
     return null;
   });
-  const [telemetry, setTelemetry] = useState<any>(null);
-  const [hotspot, setHotspot] = useState<any>(null);
+  const [telemetry, setTelemetry] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`tikzone_cached_telemetry_${routerId}`);
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
+  const [hotspot, setHotspot] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`tikzone_cached_hotspot_${routerId}`);
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
   const [logs, setLogs] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [profiles, setProfiles] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`tikzone_cached_profiles_${routerId}`);
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`tikzone_cached_telemetry_${routerId}`);
+        if (cached) return false;
+      } catch {}
+    }
+    return true;
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [copiedWinbox, setCopiedWinbox] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
@@ -119,10 +151,25 @@ export default function RouterDashboardPage({ params }: PageProps) {
         if (current.api_user) setApiUserInput(current.api_user);
         if (typeof current.api_password === "string") setApiPasswordInput(current.api_password);
       }
-      if (sysInfo) setTelemetry(sysInfo);
-      if (hsOverview) setHotspot(hsOverview);
+      if (sysInfo) {
+        setTelemetry(sysInfo);
+        try {
+          localStorage.setItem(`tikzone_cached_telemetry_${routerId}`, JSON.stringify(sysInfo));
+        } catch {}
+      }
+      if (hsOverview) {
+        setHotspot(hsOverview);
+        try {
+          localStorage.setItem(`tikzone_cached_hotspot_${routerId}`, JSON.stringify(hsOverview));
+        } catch {}
+      }
       if (logList) setLogs(logList.results || logList);
-      if (profList?.results) setProfiles(profList.results);
+      if (profList?.results) {
+        setProfiles(profList.results);
+        try {
+          localStorage.setItem(`tikzone_cached_profiles_${routerId}`, JSON.stringify(profList.results));
+        } catch {}
+      }
     } catch (err) {
       console.error("Erreur chargement données routeur:", err);
     } finally {
@@ -404,7 +451,7 @@ export default function RouterDashboardPage({ params }: PageProps) {
       )}
 
       {/* BANDEAU D'ONBOARDING : ROUTEUR EN ATTENTE DE CONNEXION */}
-      {!isOnline && (
+      {!loading && !isOnline && (
         <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border-2 border-amber-500/30 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start sm:items-center gap-3">

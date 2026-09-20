@@ -283,17 +283,52 @@ class MikrotikService:
             logger.warning(f"Erreur logs routeur {router.name}: {e}")
             return []
 
+    @staticmethod
+    def _extract_profile_expiration(p: Dict[str, Any]) -> str:
+        """Extrait intelligemment le temps de validité / expiration d'un profil Hotspot."""
+        session_to = p.get("session-timeout", "").strip()
+        if session_to and session_to not in ["-", "0s", "none", ""]:
+            return session_to
+
+        idle_to = p.get("idle-timeout", "").strip()
+        if idle_to and idle_to not in ["-", "0s", "none", ""]:
+            return f"{idle_to} (Inactivité)"
+
+        comment = p.get("comment", "")
+        if comment:
+            import re
+            match = re.search(r"\b(\d+\s*(?:m|h|d|j|semaine|mois|min|heure|jour))\b", comment, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+
+        on_login = p.get("on-login", "")
+        if on_login:
+            import re
+            match = re.search(r"(\d+[hmdw])", on_login)
+            if match:
+                return match.group(1)
+
+        return "Illimitée (Session continue)"
+
     @classmethod
-    def get_hotspot_users(cls, router: Router) -> List[Dict[str, Any]]:
-        """Liste tous les tickets / utilisateurs Hotspot du routeur."""
+    def get_hotspot_users(cls, router: Router, limit: int = 300) -> List[Dict[str, Any]]:
+        """Liste les tickets / utilisateurs Hotspot du routeur avec mise en cache et limitation sécurisée."""
+        users_cache_key = f"router_users_list_{router.id}"
+        cached = cache.get(users_cache_key)
+        if cached is not None:
+            return cached
+
         try:
-            pool = cls.get_api_connection(router)
+            # Timeout adapté de 10s pour absorber les routeurs à fort volume (3000+ tickets)
+            pool = cls.get_api_connection(router, timeout=10.0)
             api = pool.get_api()
 
-            users = api.get_resource("/ip/hotspot/user").get()
+            raw_users = api.get_resource("/ip/hotspot/user").get()
             pool.disconnect()
 
-            return [
+            recent_users = raw_users[-limit:] if len(raw_users) > limit else raw_users
+
+            result = [
                 {
                     "id": u.get("id"),
                     "name": u.get("name", ""),
@@ -301,12 +336,14 @@ class MikrotikService:
                     "uptime": u.get("uptime", "0s"),
                     "bytes_in": cls._format_bytes(u.get("bytes-in", 0)),
                     "bytes_out": cls._format_bytes(u.get("bytes-out", 0)),
-                    "limit_uptime": u.get("limit-uptime", "Illimité"),
+                    "limit_uptime": u.get("limit-uptime") or "Illimité",
                     "comment": u.get("comment", ""),
                     "disabled": u.get("disabled") == "true",
                 }
-                for u in reversed(users)
+                for u in reversed(recent_users)
             ]
+            cache.set(users_cache_key, result, timeout=30)
+            return result
         except Exception as e:
             logger.warning(f"Erreur users routeur {router.name}: {e}")
             return []
@@ -330,10 +367,13 @@ class MikrotikService:
                 {
                     "id": p.get("id"),
                     "name": p.get("name", ""),
-                    "rate_limit": p.get("rate-limit", "Illimité"),
+                    "rate_limit": p.get("rate-limit") or "Illimité",
                     "shared_users": p.get("shared-users", "1"),
-                    "session_timeout": p.get("session-timeout", "-"),
-                    "status_autorefresh": p.get("status-autorefresh", "-"),
+                    "session_timeout": cls._extract_profile_expiration(p),
+                    "raw_session_timeout": p.get("session-timeout", "-"),
+                    "idle_timeout": p.get("idle-timeout", "-"),
+                    "status_autorefresh": p.get("status-autorefresh", "1m"),
+                    "comment": p.get("comment", ""),
                 }
                 for p in profiles_res
             ]

@@ -368,7 +368,8 @@ class RouterHotspotUsersView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        users = MikrotikService.get_hotspot_users(router)
+        limit = int(request.query_params.get("limit", 300))
+        users = MikrotikService.get_hotspot_users(router, limit=limit)
         return Response({"count": len(users), "results": users})
 
     def post(self, request, router_id):

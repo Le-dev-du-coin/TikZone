@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Gauge, RefreshCw, ShieldAlert, Zap } from "lucide-react";
+import { Clock, Gauge, RefreshCw, ShieldAlert, Zap } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -95,8 +95,11 @@ export default function RouterProfilesPage({ params }: PageProps) {
                     <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300">
                       {p.shared_users} appareil(s)
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">
-                      {p.session_timeout || "-"}
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-semibold text-xs border border-amber-200/60 dark:border-amber-800/60 font-sans">
+                        <Clock className="w-3.5 h-3.5 text-amber-500" />
+                        <span>{p.session_timeout || "Illimitée"}</span>
+                      </span>
                     </td>
                     <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 text-[11px]">
                       {p.status_autorefresh || "1m"}
