@@ -617,14 +617,20 @@ class MikrotikService:
             params["shared-users"] = str(shared_users)
         if session_timeout:
             params["session-timeout"] = session_timeout
+        comment_val = None
         if price is not None:
-            base_comment = comment or f"{price} FCFA"
-            params["comment"] = base_comment
+            comment_val = comment or f"{price} FCFA"
         elif comment:
-            params["comment"] = comment
+            comment_val = comment
 
         if params:
             prof_res.set(id=profile_id, **params)
+
+        if comment_val is not None:
+            try:
+                prof_res.call("comment", {"numbers": profile_id, "comment": comment_val})
+            except Exception as comment_err:
+                logger.debug(f"RouterOS profile comment set ignored: {comment_err}")
 
         pool.disconnect()
         cache.delete(f"router_profiles_{router.id}")

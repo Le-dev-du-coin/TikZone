@@ -168,21 +168,85 @@ export default function ClientDashboardPage() {
     }
   };
 
-  const handleShareClientAccess = (inst: InstanceData) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://app.tikzone.net";
-    const loginUrl = `${origin}/login?user=${encodeURIComponent(inst.admin_user || "admin")}`;
-    const clientName = inst.client_name ? ` ${inst.client_name}` : "";
-    const cleanPhone = (inst.client_phone || "").replace(/\D/g, "");
+  // Modale Accès Client & Envoi WhatsApp
+  const [accessModalInstance, setAccessModalInstance] = useState<InstanceData | null>(null);
+  const [modalClientName, setModalClientName] = useState("");
+  const [modalClientPhone, setModalClientPhone] = useState("");
+  const [modalAdminUser, setModalAdminUser] = useState("");
+  const [modalAdminPassword, setModalAdminPassword] = useState("");
+  const [savingAccess, setSavingAccess] = useState(false);
 
-    const msg = `Bonjour${clientName},\nVoici votre lien pour gérer vos tickets WiFi Zone (${inst.name}) :\n\nLien : ${loginUrl}\nIdentifiant : ${inst.admin_user || "admin"}\nMot de passe : ${inst.admin_password || "mikroot2026"}\n\nEnregistrez vos identifiants pour vous connecter en 1 clic.`;
+  const handleOpenClientAccessModal = (inst: InstanceData) => {
+    setAccessModalInstance(inst);
+    setModalClientName(inst.client_name || "");
+    setModalClientPhone(inst.client_phone || "");
+    setModalAdminUser(inst.admin_user || "admin");
+    setModalAdminPassword(inst.admin_password || "mikroot2026");
+  };
 
-    if (cleanPhone) {
-      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, "_blank");
-      showToast(`WhatsApp ouvert pour ${inst.client_name || inst.name} !`, "success");
-    } else {
-      navigator.clipboard.writeText(msg);
-      showToast("Lien et accès copiés dans le presse-papier !", "success");
+  const handleSaveAccess = async (andOpenWhatsApp: boolean = false) => {
+    if (!accessModalInstance) return;
+    setSavingAccess(true);
+    try {
+      const cleanUser = modalAdminUser.trim() || "admin";
+      const cleanPass = modalAdminPassword.trim() || "mikroot2026";
+      const cleanName = modalClientName.trim();
+      const cleanPhone = modalClientPhone.trim();
+
+      const updated = await api.updateInstance(accessModalInstance.id, {
+        client_name: cleanName,
+        client_phone: cleanPhone,
+        admin_user: cleanUser,
+        admin_password: cleanPass,
+      });
+
+      setInstances((prev) =>
+        prev.map((i) => (i.id === accessModalInstance.id ? { ...i, ...updated } : i))
+      );
+
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://app.tikzone.net";
+      const loginUrl = `${origin}/login?user=${encodeURIComponent(cleanUser)}`;
+      const nameGreeting = cleanName ? ` ${cleanName}` : "";
+      const phoneDigits = cleanPhone.replace(/\D/g, "");
+
+      const msg = `Bonjour${nameGreeting},\nVoici votre lien pour gérer vos tickets WiFi Zone (${accessModalInstance.name}) :\n\nLien : ${loginUrl}\nIdentifiant : ${cleanUser}\nMot de passe : ${cleanPass}\n\nEnregistrez vos identifiants pour vous connecter en 1 clic.`;
+
+      if (andOpenWhatsApp) {
+        if (phoneDigits) {
+          const isMobile = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          const waUrl = isMobile
+            ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(msg)}`
+            : `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(msg)}`;
+          window.open(waUrl, "_blank");
+          showToast(`WhatsApp ouvert pour ${cleanName || accessModalInstance.name} !`, "success");
+        } else {
+          window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
+          showToast("WhatsApp Web ouvert avec le message prêt !", "success");
+        }
+      } else {
+        showToast("Identifiants et contact enregistrés avec succès !", "success");
+      }
+      setAccessModalInstance(null);
+    } catch (err: any) {
+      showToast(err.message || "Erreur lors de l'enregistrement des accès", "error");
+    } finally {
+      setSavingAccess(false);
     }
+  };
+
+  const handleCopyModalMessage = async () => {
+    if (!accessModalInstance) return;
+    const cleanUser = modalAdminUser.trim() || "admin";
+    const cleanPass = modalAdminPassword.trim() || "mikroot2026";
+    const cleanName = modalClientName.trim();
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://app.tikzone.net";
+    const loginUrl = `${origin}/login?user=${encodeURIComponent(cleanUser)}`;
+    const nameGreeting = cleanName ? ` ${cleanName}` : "";
+
+    const msg = `Bonjour${nameGreeting},\nVoici votre lien pour gérer vos tickets WiFi Zone (${accessModalInstance.name}) :\n\nLien : ${loginUrl}\nIdentifiant : ${cleanUser}\nMot de passe : ${cleanPass}\n\nEnregistrez vos identifiants pour vous connecter en 1 clic.`;
+
+    await navigator.clipboard.writeText(msg);
+    showToast("Message copié dans le presse-papier !", "success");
   };
 
   const executeDelete = async () => {
@@ -453,12 +517,12 @@ export default function ClientDashboardPage() {
                   <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                     <button
                       type="button"
-                      onClick={() => handleShareClientAccess(instance)}
+                      onClick={() => handleOpenClientAccessModal(instance)}
                       className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-xl border border-emerald-300 dark:border-emerald-700 transition-colors shadow-2xs cursor-pointer"
-                      title="Envoyer les accès au client par WhatsApp ou copier le lien"
+                      title="Configurer les accès client et envoyer par WhatsApp"
                     >
                       <Share2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Accès Client</span>
+                      <span>Accès Client & WhatsApp</span>
                     </button>
 
                     <Link
@@ -810,6 +874,140 @@ export default function ClientDashboardPage() {
                 }`}
               >
                 {renewing ? "Prolongation..." : balance < 500 ? "Solde insuffisant" : "Confirmer (+30j / 500 F)"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Client Access & WhatsApp Modal */}
+      {accessModalInstance && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-in zoom-in-95 duration-150 text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-sm">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white">
+                    Accès Client & Envoi WhatsApp
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Espace : <strong>{accessModalInstance.name}.tikzone.net</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAccessModalInstance(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300">
+                    Nom du propriétaire (Client)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ex: Mamadou Diallo"
+                    value={modalClientName}
+                    onChange={(e) => setModalClientName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300">
+                    Numéro WhatsApp (+223...)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ex: +223 70 12 34 56"
+                    value={modalClientPhone}
+                    onChange={(e) => setModalClientPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300">
+                    Identifiant de connexion
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ex: admin ou nom_client"
+                    value={modalAdminUser}
+                    onChange={(e) => setModalAdminUser(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300">
+                    Mot de passe de l'espace
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ex: mikroot2026"
+                    value={modalAdminPassword}
+                    onChange={(e) => setModalAdminPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Aperçu du message WhatsApp */}
+              <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[11px] text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">
+                    Aperçu du message WhatsApp
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyModalMessage}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>Copier</span>
+                  </button>
+                </div>
+                <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-emerald-100 dark:border-emerald-900/40 text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-line font-sans">
+                  {`Bonjour${modalClientName.trim() ? ` ${modalClientName.trim()}` : ""},\nVoici votre lien pour gérer vos tickets WiFi Zone (${accessModalInstance.name}) :\n\nLien : https://app.tikzone.net/login?user=${encodeURIComponent(modalAdminUser.trim() || "admin")}\nIdentifiant : ${modalAdminUser.trim() || "admin"}\nMot de passe : ${modalAdminPassword.trim() || "mikroot2026"}\n\nEnregistrez vos identifiants pour vous connecter en 1 clic.`}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setAccessModalInstance(null)}
+                disabled={savingAccess}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveAccess(false)}
+                disabled={savingAccess}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+              >
+                {savingAccess ? "Sauvegarde..." : "Enregistrer"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveAccess(true)}
+                disabled={savingAccess}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>{savingAccess ? "Enregistrement..." : "📱 Enregistrer & Ouvrir WhatsApp Web"}</span>
               </button>
             </div>
           </div>

@@ -238,16 +238,15 @@ export default function RouterTicketsPage({ params }: PageProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {routerData?.hotspot_type !== "RADIUS" && (
-            <button
-              type="button"
-              onClick={handleOpenRadiusModal}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all cursor-pointer shadow-xs"
-            >
-              <Radio className="w-4 h-4 text-emerald-500" />
-              <span>Brancher RADIUS MikroTik (1-Clic)</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleOpenRadiusModal}
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 font-bold text-xs rounded-xl border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer shadow-xs"
+            title="Afficher le script pour brancher ce MikroTik au serveur Cloud RADIUS"
+          >
+            <Radio className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Script RADIUS MikroTik (1-Clic)</span>
+          </button>
 
           {tickets.length > 0 && (
             <button
