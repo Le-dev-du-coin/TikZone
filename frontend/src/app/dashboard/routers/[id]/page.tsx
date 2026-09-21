@@ -113,6 +113,33 @@ export default function RouterDashboardPage({ params }: PageProps) {
   const [showGenModal, setShowGenModal] = useState(false);
   const [showRebootConfirm, setShowRebootConfirm] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [showRadiusModal, setShowRadiusModal] = useState(false);
+  const [radiusScriptLoading, setRadiusScriptLoading] = useState(false);
+  const [radiusScriptData, setRadiusScriptData] = useState<any>(null);
+  const [copiedRadiusScript, setCopiedRadiusScript] = useState(false);
+
+  const handleOpenRadiusModal = async () => {
+    setShowRadiusModal(true);
+    if (!radiusScriptData) {
+      setRadiusScriptLoading(true);
+      try {
+        const data = await api.getRadiusSetupScript(routerId);
+        setRadiusScriptData(data);
+      } catch (err: any) {
+        console.error("Erreur RADIUS:", err);
+      } finally {
+        setRadiusScriptLoading(false);
+      }
+    }
+  };
+
+  const handleCopyRadiusScript = () => {
+    if (radiusScriptData?.script) {
+      navigator.clipboard.writeText(radiusScriptData.script);
+      setCopiedRadiusScript(true);
+      setTimeout(() => setCopiedRadiusScript(false), 2500);
+    }
+  };
 
   // Formulaire Identifiants MikroTik (API)
   const [apiUserInput, setApiUserInput] = useState("admin");
@@ -425,6 +452,16 @@ export default function RouterDashboardPage({ params }: PageProps) {
               <Copy className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={handleOpenRadiusModal}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs font-bold border border-emerald-300 dark:border-emerald-700 transition-colors shadow-2xs cursor-pointer"
+            title="Afficher le script Terminal pour brancher ce MikroTik au Cloud RADIUS"
+          >
+            <Radio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Script RADIUS (1-Clic)</span>
+          </button>
 
           <button
             type="button"
@@ -1267,6 +1304,90 @@ export default function RouterDashboardPage({ params }: PageProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Configuration RADIUS MikroTik 1-Clic */}
+      {showRadiusModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs no-print">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border border-emerald-200 dark:border-emerald-800">
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Raccordement RADIUS MikroTik 1-Clic
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Copiez et collez ce script dans le Terminal WinBox / WebFig de votre routeur.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRadiusModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {radiusScriptLoading ? (
+              <div className="py-12 text-center text-xs text-slate-500">
+                Génération du script sur mesure en cours...
+              </div>
+            ) : radiusScriptData ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Serveur RADIUS TikZone</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                      {radiusScriptData.radius_server_ip}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Ports Auth / Accounting</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                      UDP {radiusScriptData.radius_auth_port} / {radiusScriptData.radius_acct_port}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <pre className="p-4 bg-slate-950 text-emerald-400 font-mono text-[11px] rounded-2xl overflow-x-auto max-h-64 border border-slate-800 leading-relaxed">
+                    {radiusScriptData.script}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={handleCopyRadiusScript}
+                    className="absolute top-3 right-3 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{copiedRadiusScript ? "Copié !" : "Copier le script"}</span>
+                  </button>
+                </div>
+
+                <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <Info className="w-4 h-4 text-blue-600" />
+                    Instructions d'installation :
+                  </p>
+                  <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-blue-800 dark:text-blue-300">
+                    <li>Ouvrez <strong>WinBox</strong> et connectez-vous à votre MikroTik.</li>
+                    <li>Ouvrez le menu <strong>New Terminal</strong>.</li>
+                    <li>Collez la commande ci-dessus avec un clic-droit et validez par Entrée.</li>
+                    <li>Votre routeur authentifie désormais vos tickets Hotspot via TikZone !</li>
+                  </ol>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-rose-500">
+                Impossible de charger le script de configuration RADIUS.
+              </div>
+            )}
           </div>
         </div>
       )}
