@@ -44,21 +44,25 @@ export default function WhatsAppSupportButton() {
         </div>
       )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button (Discret & Compact) */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white py-3 px-4 rounded-full shadow-lg shadow-emerald-500/30 transition-all duration-200 focus:outline-hidden focus:ring-4 focus:ring-emerald-400/30 cursor-pointer"
+        className="group relative flex items-center justify-center w-11 h-11 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-full shadow-lg shadow-emerald-500/25 transition-all duration-200 focus:outline-hidden focus:ring-4 focus:ring-emerald-400/30 cursor-pointer"
         aria-label="Contacter le support WhatsApp TikZone"
       >
-        <MessageCircle className="w-6 h-6 shrink-0 transition-transform group-hover:scale-110" />
-        <span className="text-xs font-bold whitespace-nowrap hidden sm:inline-block">
+        <MessageCircle className="w-5 h-5 shrink-0 transition-transform group-hover:scale-110" />
+
+        {/* Tooltip au survol à gauche */}
+        <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900/95 dark:bg-slate-800 text-white text-[11px] font-bold rounded-lg shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 translate-x-1 group-hover:translate-x-0">
           Support WhatsApp
-        </span>
+          <div className="absolute top-1/2 -translate-y-1/2 -right-1 border-4 border-transparent border-l-slate-900/95 dark:border-l-slate-800" />
+        </div>
+
         {/* Pulsing notification dot */}
-        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+        <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-600 border-2 border-white dark:border-slate-950"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600 border-2 border-white dark:border-slate-950"></span>
         </span>
       </button>
     </div>
