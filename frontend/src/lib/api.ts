@@ -221,8 +221,8 @@ export const api = {
     return await res.json();
   },
 
-  async getRouterHotspotUsers(routerId: string) {
-    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/users/`, {
+  async getRouterHotspotUsers(routerId: string, limit = 300) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/users/?limit=${limit}`, {
       headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error("Erreur des utilisateurs Hotspot");
@@ -237,6 +237,17 @@ export const api = {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.detail || "Erreur de création de l'utilisateur");
+    return result;
+  },
+
+  async deleteRouterHotspotUsers(routerId: string, userIds: string[]) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/users/`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ user_ids: userIds }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur de suppression des utilisateurs");
     return result;
   },
 

@@ -881,6 +881,32 @@ class MikrotikService:
         return generated
 
     @classmethod
+    def delete_hotspot_users(cls, router: Router, user_ids: List[str]) -> int:
+        """Supprime une liste de tickets/utilisateurs Hotspot du MikroTik en une seule passe."""
+        if not user_ids:
+            return 0
+
+        pool = cls.get_api_connection(router)
+        api = pool.get_api()
+        user_res = api.get_resource("/ip/hotspot/user")
+
+        deleted = 0
+        for uid in user_ids:
+            try:
+                user_res.remove(id=uid)
+                deleted += 1
+            except Exception as e:
+                logger.warning(f"Erreur suppression ticket {uid} sur {router.name}: {e}")
+
+        pool.disconnect()
+        cache.delete(f"router_user_count_{router.id}")
+        cache.delete(f"router_hs_overview_{router.id}")
+        cache.delete(f"router_users_list_{router.id}")
+        cache.delete(f"router_sales_report_{router.id}")
+        cache.delete(f"router_user_prof_map_{router.id}")
+        return deleted
+
+    @classmethod
     def disconnect_active_user(cls, router: Router, active_id: str) -> bool:
         """Déconnecte immédiatement un utilisateur actif."""
         pool = cls.get_api_connection(router)

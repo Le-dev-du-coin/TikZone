@@ -396,6 +396,28 @@ class RouterHotspotUsersView(APIView):
         except Exception as e:
             return Response({"detail": f"Erreur lors de la création : {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, router_id):
+        from .services.mikrotik import MikrotikService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        user_ids = request.data.get("user_ids", [])
+        if not user_ids:
+            return Response({"detail": "Aucun identifiant de ticket fourni."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            deleted_count = MikrotikService.delete_hotspot_users(router, user_ids)
+            return Response({
+                "detail": f"{deleted_count} ticket(s) supprimé(s) avec succès.",
+                "deleted_count": deleted_count,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"detail": f"Erreur lors de la suppression : {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class RouterGenerateTicketsView(APIView):
     """Génération par lot de vouchers Hotspot personnalisés en 1-clic."""
