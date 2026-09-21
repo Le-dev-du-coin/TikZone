@@ -813,64 +813,85 @@ class MikrotikService:
         cls,
         router: Router,
         count: int = 10,
+        auth_mode: str = "single",
         profile: str = "default",
         time_limit: str = "1h",
         prefix: str = "",
         code_length: int = 6,
-        code_format: str = "alpha_upper",
+        code_format: str = "numeric",
         price: int = 100,
         comment: str = "",
     ) -> List[Dict[str, Any]]:
-        """Génère un lot de tickets avec code unique en 1 clic (longueur 4, 6 ou 8, charset au choix)."""
+        """Génère un lot de tickets avec code unique (longueur 4, 6 ou 8, PIN unique ou User/Pass séparé)."""
         import random
         import datetime
+
+        # Validation stricte du volume (1 à 1000 tickets par lot)
+        count = min(max(int(count), 1), 1000)
 
         # Validation stricte de la longueur demandée (4, 6 ou 8)
         valid_length = code_length if code_length in [4, 6, 8] else 6
 
-        # Sélection du jeu de caractères (en excluant les caractères ambigus comme 0, O, 1, I, l)
-        if code_format == "numeric":
-            chars = "0123456789"
-        elif code_format == "alpha_lower":
+        # Sélection du jeu de caractères (en excluant les caractères ambigus)
+        if code_format == "alpha_lower":
             chars = "23456789abcdefghkmnpqrstuvwxyz"
-        else:  # "alpha_upper" par défaut
+            pass_chars = "23456789abcdefghkmnpqrstuvwxyz"
+        elif code_format == "alpha_upper":
             chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+            pass_chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+        else:  # "numeric" par défaut
+            chars = "0123456789"
+            pass_chars = "0123456789"
 
-        pool = cls.get_api_connection(router)
+        # Timeout allongé pour absorber les gros volumes jusqu'à 1000 tickets sans coupure
+        timeout_val = 15.0 if count > 200 else 8.0
+        pool = cls.get_api_connection(router, timeout=timeout_val)
         api = pool.get_api()
         user_res = api.get_resource("/ip/hotspot/user")
 
         generated = []
-        batch_id = f"TZ-{random.randint(1000, 9999)}"
         today_str = datetime.date.today().strftime("%Y-%m-%d")
+        wifi_zone = (router.hotspot_name or router.name).strip()
+        duration_label = (time_limit or "Illimitée").strip()
 
-        # Commentaire du ticket : libre ou formaté proprement avec date et montant
-        if comment and comment.strip():
-            base_comment = comment.strip()
-            ticket_comment = f"{base_comment} | {batch_id} | {today_str} | {price} FCFA"
-        else:
-            ticket_comment = f"Lot {batch_id} | {today_str} | {price} FCFA"
+        # Construction du commentaire automatique ou personnalisé sans 'TZ'
+        has_custom_comment = bool(comment and comment.strip())
+        custom_base = comment.strip() if has_custom_comment else ""
 
-        for _ in range(count):
+        for idx in range(1, count + 1):
             random_code = "".join(random.choices(chars, k=valid_length))
             code = f"{prefix}{random_code}" if prefix else random_code
 
+            # Gestion du mode d'authentification : 1 champ (User=Pass) vs 2 champs (User!=Pass)
+            if auth_mode == "dual":
+                password = "".join(random.choices(pass_chars, k=valid_length if valid_length <= 6 else 4))
+            else:
+                password = code
+
+            if has_custom_comment:
+                ticket_comment = f"{custom_base} | {today_str} | {price} FCFA"
+            else:
+                seq_str = f"{idx:05d}"
+                ticket_comment = f"ticket : {wifi_zone} : {today_str} : {duration_label} : {seq_str}"
+
             params = {
                 "name": code,
-                "password": code,
+                "password": password,
                 "profile": profile,
                 "comment": ticket_comment,
             }
-            if time_limit:
+            if time_limit and time_limit != "Illimité":
                 params["limit-uptime"] = time_limit
 
             user_res.add(**params)
             generated.append({
                 "code": code,
+                "password": password,
+                "auth_mode": auth_mode,
                 "profile": profile,
                 "time_limit": time_limit,
                 "price": price,
-                "batch_id": batch_id,
+                "comment": ticket_comment,
             })
 
         pool.disconnect()

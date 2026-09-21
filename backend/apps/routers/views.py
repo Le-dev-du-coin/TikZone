@@ -433,19 +433,24 @@ class RouterGenerateTicketsView(APIView):
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            count = min(int(request.data.get("count", 10)), 500)
+            raw_count = int(request.data.get("count", 10))
+            count = min(max(raw_count, 1), 1000)
+            auth_mode = request.data.get("auth_mode", "single")
+            if auth_mode not in ["single", "dual"]:
+                auth_mode = "single"
             profile = request.data.get("profile", "default")
             time_limit = request.data.get("time_limit", "1h")
             prefix = request.data.get("prefix", "")
             raw_length = int(request.data.get("code_length", 6))
             code_length = raw_length if raw_length in [4, 6, 8] else 6
-            code_format = request.data.get("code_format", "alpha_upper")
+            code_format = request.data.get("code_format", "numeric")
             price = int(request.data.get("price", 100))
             custom_comment = request.data.get("comment", "").strip()
 
             tickets = MikrotikService.generate_batch_tickets(
                 router,
                 count=count,
+                auth_mode=auth_mode,
                 profile=profile,
                 time_limit=time_limit,
                 prefix=prefix,

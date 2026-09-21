@@ -22,13 +22,14 @@ export default function RouterTicketsPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const routerId = resolvedParams.id;
 
+  const [authMode, setAuthMode] = useState<"single" | "dual">("single");
   const [profiles, setProfiles] = useState<any[]>([]);
   const [count, setCount] = useState(20);
   const [profile, setProfile] = useState("default");
   const [timeLimit, setTimeLimit] = useState("1h");
   const [prefix, setPrefix] = useState("");
   const [codeLength, setCodeLength] = useState<4 | 6 | 8>(6);
-  const [codeFormat, setCodeFormat] = useState<"alpha_upper" | "alpha_lower" | "numeric">("alpha_upper");
+  const [codeFormat, setCodeFormat] = useState<"alpha_upper" | "alpha_lower" | "numeric">("numeric");
   const [customComment, setCustomComment] = useState("");
   const [price, setPrice] = useState(100);
 
@@ -79,7 +80,8 @@ export default function RouterTicketsPage({ params }: PageProps) {
     setSuccessMsg(null);
     try {
       const res = await api.generateRouterTickets(routerId, {
-        count,
+        count: Math.min(Math.max(count, 1), 1000),
+        auth_mode: authMode,
         profile,
         time_limit: timeLimit,
         prefix,
@@ -245,19 +247,69 @@ export default function RouterTicketsPage({ params }: PageProps) {
         )}
 
         <form onSubmit={handleGenerate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Mode d'authentification (1 champ vs 2 champs) */}
+          <div className="sm:col-span-2 lg:col-span-3 space-y-1.5 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Mode d'authentification au portail Wi-Fi
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setAuthMode("single")}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  authMode === "single"
+                    ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 ring-2 ring-blue-600/20"
+                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${authMode === "single" ? "bg-blue-600" : "bg-slate-400"}`} />
+                  Code unique / PIN
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  1 seul champ au portail (Nom d'utilisateur = Mot de passe). Idéal smartphones.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthMode("dual")}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  authMode === "dual"
+                    ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 ring-2 ring-blue-600/20"
+                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${authMode === "dual" ? "bg-blue-600" : "bg-slate-400"}`} />
+                  Identifiant & Mot de passe distincts
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  2 champs au portail pour une sécurité renforcée.
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Nombre de tickets */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Nombre de Tickets à Générer
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Nombre de Tickets à Générer
+              </label>
+              <span className="text-[10px] font-bold text-slate-400">Max 1 000</span>
+            </div>
             <input
               type="number"
               min={1}
-              max={500}
+              max={1000}
               value={count}
               onChange={(e) => setCount(parseInt(e.target.value) || 10)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
             />
+            <p className="text-[10px] text-slate-400 mt-1">
+              Génération optimisée sans risque de saturation du routeur.
+            </p>
           </div>
 
           {/* Prix unitaire */}
@@ -301,11 +353,14 @@ export default function RouterTicketsPage({ params }: PageProps) {
             </label>
             <input
               type="text"
-              placeholder="Ex: 1h, 2h, 3h, 24h, 1d"
+              placeholder="Ex: 1h, 2h, 3h, 24h, 7d, 30d"
               value={timeLimit}
               onChange={(e) => setTimeLimit(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
             />
+            <p className="text-[10px] text-slate-400 mt-1">
+              Syntaxe : <span className="font-bold">h</span> = heures (ex: 4h), <span className="font-bold">d</span> = jours (ex: 7d).
+            </p>
           </div>
 
           {/* Longueur du Code (Strictement 4, 6 ou 8) */}
@@ -325,7 +380,7 @@ export default function RouterTicketsPage({ params }: PageProps) {
                       : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  {len} {len === 6 ? "caractères ★" : "caractères"}
+                  {len} {len === 6 ? "chiffres ★" : "chiffres"}
                 </button>
               ))}
             </div>
@@ -418,14 +473,29 @@ export default function RouterTicketsPage({ params }: PageProps) {
                       <div className="border-b-[1.5px] border-slate-900 my-0.5"></div>
                     </div>
 
-                    {/* Body : Code Ticket en grand */}
+                    {/* Body : Code Ticket ou Identifiant/Mot de passe */}
                     <div className="my-auto py-1 text-center space-y-0.5">
-                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-600">
-                        Code Ticket
-                      </div>
-                      <div className="border-[1.5px] border-slate-900 rounded px-2 py-0.5 text-sm font-black font-mono tracking-widest bg-slate-50">
-                        {t.code}
-                      </div>
+                      {t.auth_mode === "dual" && t.password && t.password !== t.code ? (
+                        <div className="space-y-1 bg-slate-50 border-[1.5px] border-slate-900 rounded p-1">
+                          <div className="flex items-center justify-between text-[9px] font-bold">
+                            <span className="text-slate-600 uppercase">Utilisateur :</span>
+                            <span className="font-mono font-black text-slate-950 text-xs">{t.code}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[9px] font-bold border-t border-slate-300 pt-0.5">
+                            <span className="text-slate-600 uppercase">Mot de passe :</span>
+                            <span className="font-mono font-black text-rose-600 text-xs">{t.password}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-600">
+                            Code Ticket (PIN)
+                          </div>
+                          <div className="border-[1.5px] border-slate-900 rounded px-2 py-0.5 text-sm font-black font-mono tracking-widest bg-slate-50">
+                            {t.code}
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Footer : Durée & Prix (Toujours visible sans troncature) */}
@@ -450,10 +520,19 @@ export default function RouterTicketsPage({ params }: PageProps) {
                     <p className="text-[11px]">Pass Internet : {t.time_limit}</p>
                     <p className="text-[11px]">Prix : {t.price} FCFA</p>
                     <div className="border-t border-b border-dashed border-slate-400 py-1.5 my-1">
-                      <p className="text-[9px] uppercase text-slate-500 font-sans">CODE D'ACCÈS :</p>
-                      <p className="text-base font-black tracking-widest">{t.code}</p>
+                      {t.auth_mode === "dual" && t.password && t.password !== t.code ? (
+                        <div className="space-y-1 text-left px-2">
+                          <p className="text-[10px] font-black">UTILISATEUR : <span className="text-sm font-mono">{t.code}</span></p>
+                          <p className="text-[10px] font-black">MOT DE PASSE : <span className="text-sm font-mono text-rose-600">{t.password}</span></p>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-[9px] uppercase text-slate-500 font-sans">CODE D'ACCÈS :</p>
+                          <p className="text-base font-black tracking-widest">{t.code}</p>
+                        </>
+                      )}
                     </div>
-                    <p className="text-[8.5px] text-slate-500">Connectez-vous au WiFi et saisissez votre code.</p>
+                    <p className="text-[8.5px] text-slate-500">Connectez-vous au WiFi et saisissez vos accès.</p>
                   </div>
                 );
               })}

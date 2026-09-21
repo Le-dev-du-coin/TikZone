@@ -251,7 +251,20 @@ export const api = {
     return result;
   },
 
-  async generateRouterTickets(routerId: string, data: { count: number; profile?: string; time_limit?: string; prefix?: string; code_length?: number; code_format?: string; price?: number; comment?: string }) {
+  async generateRouterTickets(
+    routerId: string,
+    data: {
+      count: number;
+      auth_mode?: "single" | "dual";
+      profile?: string;
+      time_limit?: string;
+      prefix?: string;
+      code_length?: number;
+      code_format?: string;
+      price?: number;
+      comment?: string;
+    }
+  ) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/generate/`, {
       method: "POST",
       headers: getAuthHeaders(),

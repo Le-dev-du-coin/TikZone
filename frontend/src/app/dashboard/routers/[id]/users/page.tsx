@@ -71,12 +71,17 @@ export default function RouterUsersPage({ params }: PageProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Modale d'ajout individuel
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addName, setAddName] = useState("");
-  const [addPassword, setAddPassword] = useState("");
-  const [addProfile, setAddProfile] = useState("default");
-  const [addTimeLimit, setAddTimeLimit] = useState("");
+  // Modale de génération de tickets par lot
+  const [showGenModal, setShowGenModal] = useState(false);
+  const [genCount, setGenCount] = useState(20);
+  const [genAuthMode, setGenAuthMode] = useState<"single" | "dual">("single");
+  const [genProfile, setGenProfile] = useState("default");
+  const [genTimeLimit, setGenTimeLimit] = useState("3h");
+  const [genCodeLength, setGenCodeLength] = useState<4 | 6 | 8>(6);
+  const [genCodeFormat, setGenCodeFormat] = useState<"numeric" | "alpha_upper" | "alpha_lower">("numeric");
+  const [genPrefix, setGenPrefix] = useState("");
+  const [genPrice, setGenPrice] = useState(100);
+  const [genComment, setGenComment] = useState("");
 
   // Notifications
   const [actionLoading, setActionLoading] = useState(false);
@@ -173,27 +178,55 @@ export default function RouterUsersPage({ params }: PageProps) {
     }
   };
 
-  // Création individuelle d'un ticket
-  const handleAddUser = async (e: React.FormEvent) => {
+  // Ouverture du générateur par lot pré-rempli
+  const handleOpenGenerateModal = (targetProfileName?: string) => {
+    setActionSuccess(null);
+    setActionError(null);
+
+    const activeProf =
+      targetProfileName && targetProfileName !== "ALL"
+        ? targetProfileName
+        : profiles[0]?.name || "default";
+
+    setGenProfile(activeProf);
+
+    const profObj = profiles.find((p) => p.name === activeProf);
+    if (profObj) {
+      if (profObj.session_timeout && profObj.session_timeout !== "Illimitée" && profObj.session_timeout !== "-") {
+        setGenTimeLimit(profObj.session_timeout);
+      }
+      if (profObj.price) {
+        const num = parseInt(profObj.price.toString().replace(/\D/g, ""));
+        if (!isNaN(num) && num > 0) setGenPrice(num);
+      }
+    }
+
+    setShowGenModal(true);
+  };
+
+  // Génération de tickets par lot
+  const handleBatchGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading(true);
     setActionError(null);
     try {
-      await api.addRouterHotspotUser(routerId, {
-        name: addName.trim(),
-        password: addPassword.trim() || addName.trim(),
-        profile: addProfile,
-        time_limit: addTimeLimit.trim(),
-        comment: "TikZone Ticket Direct",
+      const res = await api.generateRouterTickets(routerId, {
+        count: Math.min(Math.max(genCount, 1), 1000),
+        auth_mode: genAuthMode,
+        profile: genProfile,
+        time_limit: genTimeLimit.trim(),
+        prefix: genPrefix.trim(),
+        code_length: genCodeLength,
+        code_format: genCodeFormat,
+        price: genPrice,
+        comment: genComment.trim(),
       });
-      setActionSuccess(`Ticket '${addName}' créé avec succès !`);
-      setAddName("");
-      setAddPassword("");
-      setAddTimeLimit("");
-      setTimeout(() => setShowAddModal(false), 1200);
-      loadData();
+      setActionSuccess(`${res.count || genCount} tickets générés avec succès !`);
+      setShowGenModal(false);
+      await loadData();
+      setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
-      setActionError(err.message || "Erreur de création");
+      setActionError(err.message || "Erreur de génération des tickets");
     } finally {
       setActionLoading(false);
     }
@@ -279,15 +312,11 @@ export default function RouterUsersPage({ params }: PageProps) {
 
           <button
             type="button"
-            onClick={() => {
-              setActionSuccess(null);
-              setActionError(null);
-              setShowAddModal(true);
-            }}
+            onClick={() => handleOpenGenerateModal()}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>+ Créer un Ticket</span>
+            <span>+ Générer des Tickets</span>
           </button>
         </div>
       </div>
@@ -333,13 +362,14 @@ export default function RouterUsersPage({ params }: PageProps) {
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Ouvrir</span>
                 </button>
-                <Link
-                  href={`/dashboard/routers/${routerId}/tickets`}
-                  className="flex-1 py-1.5 px-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 text-center"
+                <button
+                  type="button"
+                  onClick={() => handleOpenGenerateModal("ALL")}
+                  className="flex-1 py-1.5 px-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-300" />
                   <span>Générer</span>
-                </Link>
+                </button>
               </div>
             </div>
 
@@ -384,10 +414,7 @@ export default function RouterUsersPage({ params }: PageProps) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setAddProfile(p.name);
-                        setShowAddModal(true);
-                      }}
+                      onClick={() => handleOpenGenerateModal(p.name)}
                       className="flex-1 py-1.5 px-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Zap className="w-3.5 h-3.5 text-amber-300" />
@@ -559,97 +586,253 @@ export default function RouterUsersPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* MODAL CRÉER UN TICKET */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+      {/* MODAL GÉNÉRATEUR DE TICKETS PAR LOT */}
+      {showGenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-black text-slate-900 dark:text-white text-base flex items-center gap-2">
-                <Ticket className="w-4 h-4 text-blue-600" />
-                <span>Créer un Ticket Hotspot</span>
-              </h3>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600">
+                  <Ticket className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">
+                    Générer un Lot de Tickets
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Profil ciblé : <span className="font-bold text-blue-600 dark:text-blue-400">{genProfile}</span>
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
+                onClick={() => setShowGenModal(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAddUser} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Code Ticket / Identifiant
+            <form onSubmit={handleBatchGenerate} className="space-y-4">
+              {/* 1. Mode d'authentification (1 champ vs 2 champs) */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Mode d'authentification au portail Wi-Fi
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  placeholder="Ex: 849201"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGenAuthMode("single")}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      genAuthMode === "single"
+                        ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 ring-2 ring-blue-600/20"
+                        : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className="font-bold text-xs flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${genAuthMode === "single" ? "bg-blue-600" : "bg-slate-400"}`} />
+                      Code unique / PIN
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-normal">
+                      1 seul champ au portail (Nom d'utilisateur = Mot de passe). Idéal mobile.
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGenAuthMode("dual")}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      genAuthMode === "dual"
+                        ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 ring-2 ring-blue-600/20"
+                        : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className="font-bold text-xs flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${genAuthMode === "dual" ? "bg-blue-600" : "bg-slate-400"}`} />
+                      Identifiant & Mot de passe
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-normal">
+                      2 champs distincts au portail pour un niveau de sécurité renforcé.
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Mot de passe (Laisser vide pour code identique)
-                </label>
-                <input
-                  type="text"
-                  value={addPassword}
-                  onChange={(e) => setAddPassword(e.target.value)}
-                  placeholder="Identique au code si vide"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-                />
+              {/* 2. Nombre de tickets et Profil */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Nombre de tickets
+                    </label>
+                    <span className="text-[10px] font-bold text-slate-400">Max 1 000</span>
+                  </div>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    required
+                    value={genCount}
+                    onChange={(e) => setGenCount(parseInt(e.target.value) || 1)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white"
+                  />
+                  <div className="flex items-center gap-1 mt-1.5">
+                    {[10, 25, 50, 100, 500].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setGenCount(n)}
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors ${
+                          genCount === n
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Profil Hotspot
+                  </label>
+                  <select
+                    value={genProfile}
+                    onChange={(e) => {
+                      const newP = e.target.value;
+                      setGenProfile(newP);
+                      const target = profiles.find((x) => x.name === newP);
+                      if (target) {
+                        if (target.session_timeout && target.session_timeout !== "Illimitée" && target.session_timeout !== "-") {
+                          setGenTimeLimit(target.session_timeout);
+                        }
+                        if (target.price) {
+                          const num = parseInt(target.price.toString().replace(/\D/g, ""));
+                          if (!isNaN(num) && num > 0) setGenPrice(num);
+                        }
+                      }
+                    }}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  >
+                    <option value="default">default</option>
+                    {profiles.map((p) => (
+                      <option key={p.id || p.name} value={p.name}>
+                        {p.name} ({p.price || "100 FCFA"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Profil de Débit / Validité
-                </label>
-                <select
-                  value={addProfile}
-                  onChange={(e) => setAddProfile(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                >
-                  <option value="default">default</option>
-                  {profiles.map((p) => (
-                    <option key={p.id || p.name} value={p.name}>
-                      {p.name} ({p.price || "100 FCFA"})
-                    </option>
-                  ))}
-                </select>
+              {/* 3. Longueur du code & Format */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Longueur du code
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {([4, 6, 8] as const).map((len) => (
+                      <button
+                        key={len}
+                        type="button"
+                        onClick={() => setGenCodeLength(len)}
+                        className={`py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center ${
+                          genCodeLength === len
+                            ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                            : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                        }`}
+                      >
+                        {len} chiffres
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Format des caractères
+                  </label>
+                  <select
+                    value={genCodeFormat}
+                    onChange={(e) => setGenCodeFormat(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  >
+                    <option value="numeric">Chiffres uniquement (0-9)</option>
+                    <option value="alpha_upper">Majuscules & Chiffres (ABCD)</option>
+                    <option value="alpha_lower">Minuscules & Chiffres (abcd)</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Limite Uptime (Optionnel, ex: 1h, 24h, 3d)
-                </label>
-                <input
-                  type="text"
-                  value={addTimeLimit}
-                  onChange={(e) => setAddTimeLimit(e.target.value)}
-                  placeholder="Ex: 1h, 2h, 1d"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-                />
+              {/* 4. Durée Uptime & Prix */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Limite de durée (Uptime)
+                  </label>
+                  <input
+                    type="text"
+                    value={genTimeLimit}
+                    onChange={(e) => setGenTimeLimit(e.target.value)}
+                    placeholder="Ex: 2h, 4h, 24h, 7d, 30d"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Syntaxe : <span className="font-bold">h</span> = heures (ex: 4h, 24h), <span className="font-bold">d</span> = jours (ex: 7d, 30d).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Prix unitaire (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={genPrice}
+                    onChange={(e) => setGenPrice(parseInt(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {/* 5. Préfixe & Commentaire */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Commentaire personnalisé (Optionnel)
+                  </label>
+                  <input
+                    type="text"
+                    value={genComment}
+                    onChange={(e) => setGenComment(e.target.value)}
+                    placeholder="Ex: Vente Boutique Centre-Ville"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                    Format automatique si vide : <code className="text-slate-600 dark:text-slate-300 font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">ticket : [Zone Wi-Fi] : [Date] : [Durée] : 00001</code>
+                  </p>
+                </div>
+              </div>
+
+              {/* Boutons d'action */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  onClick={() => setShowGenModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-2"
                 >
-                  <span>{actionLoading ? "Création..." : "Créer le Ticket"}</span>
+                  <Zap className="w-3.5 h-3.5 text-amber-300" />
+                  <span>{actionLoading ? "Génération en cours..." : `Générer ${genCount} ticket(s)`}</span>
                 </button>
               </div>
             </form>
