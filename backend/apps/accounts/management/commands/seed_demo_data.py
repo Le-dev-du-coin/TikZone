@@ -86,6 +86,6 @@ class Command(BaseCommand):
         # 7. Provisionnement automatique dans Mikhmon-Next Engine
         from apps.instances.services import MikhmonProvisioningService
         count = MikhmonProvisioningService.sync_all()
-        self.stdout.write(self.style.SUCCESS(f"[OK] {count} routeur(s) provisionne(s) avec succes dans Mikhmon-Next (data/routers.json)"))
+        self.stdout.write(self.style.SUCCESS(f"[OK] {count} routeur(s) provisionne(s) avec succes sur TikZone Cloud"))
 
         self.stdout.write(self.style.SUCCESS("[OK] Donnees de demonstration, token 'demo-token-active-50k' et credit de 50 000 FCFA initialises pour siramanass@mikroot.net"))

@@ -31,18 +31,16 @@ Le projet suit une architecture modulaire et générique :
 
 ```text
 TikZone/
-├── backend/            # API REST Django / Python (Core, Auth, Routeurs, Facturation)
-├── frontend/           # Application Web SaaS (Dashboard client & admin en Next.js / TypeScript)
-├── mikhmon-engine/     # Moteur autonome de gestion Hotspot et impression de tickets
+├── backend/            # API REST Django / Python (Core, Auth, Routeurs, Facturation, FreeRADIUS)
+├── frontend/           # Application Web SaaS (Dashboard unifié, tickets A4, monitoring en Next.js)
 ├── infra/              # Infrastructure VPN, scripts de provisionnement et agent de synchronisation
 └── docs/               # Documentation technique et guides d'exploitation
 ```
 
 ### Détail des Composants
 
-- **`backend/`** : Conçu avec Django et Django REST Framework. Gère la logique métier, la persistance des données, la facturation et l'orchestration des paramètres réseau. Géré avec **Poetry**.
-- **`frontend/`** : Interface d'administration moderne construite avec React, Next.js et Tailwind CSS, offrant une expérience fluide pour la gestion des routeurs et des finances.
-- **`mikhmon-engine/`** : Module spécialisé pour l'interaction directe avec l'API RouterOS MikroTik, optimisé pour la vitesse de génération des tickets et la supervision en direct des utilisateurs actifs.
+- **`backend/`** : Conçu avec Django et Django REST Framework. Gère la logique métier, la persistance PostgreSQL, le Moteur Cloud RADIUS, la facturation et l'orchestration des paramètres réseau. Géré avec **Poetry**.
+- **`frontend/`** : Interface d'administration moderne unifiée construite avec React, Next.js et Tailwind CSS, offrant la gestion complète des espaces, génération et impression de tickets Hotspot A4, monitoring en temps réel et finances.
 - **`infra/vpn/`** : Scripts d'automatisation pour serveurs Linux (WireGuard, IPTables, agent démon Python pour synchroniser dynamiquement les routeurs autorisés sur le VPS).
 
 ---
