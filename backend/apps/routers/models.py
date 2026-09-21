@@ -48,6 +48,10 @@ class Router(models.Model):
         EXPIRED = "EXPIRED", "Expiré"
         SUSPENDED = "SUSPENDED", "Suspendu"
 
+    class HotspotType(models.TextChoices):
+        RADIUS = "RADIUS", "Moteur Cloud RADIUS (Recommandé)"
+        STANDALONE = "STANDALONE", "Moteur Local RouterOS"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="routers")
     mikhmon_instance = models.ForeignKey(
@@ -57,6 +61,12 @@ class Router(models.Model):
     )
     name = models.CharField("Nom du Routeur", max_length=100)
     hotspot_name = models.CharField("Nom Commercial Hotspot", max_length=100, blank=True, default="")
+    hotspot_type = models.CharField(
+        "Type de Moteur Hotspot",
+        max_length=20,
+        choices=HotspotType.choices,
+        default=HotspotType.RADIUS,
+    )
     api_user = models.CharField("Nom d'utilisateur API RouterOS", max_length=50, default="admin")
     api_password = models.CharField("Mot de passe API RouterOS", max_length=128, blank=True, default="")
     status = models.CharField(
@@ -202,7 +212,7 @@ class VpnCredential(models.Model):
                 "pUBL1cK3yM1kr00tS3rv3rVpnW1r3gu4rdD3m02026=",
             )
             server_port = getattr(settings, "VPN_WG_SERVER_PORT", 51820)
-            return (
+            script = (
                 f"/interface wireguard remove [find name=wg-tikzone]\n"
                 f"/interface wireguard remove [find name=wg-mikroot]\n"
                 f"/interface wireguard add name=wg-tikzone listen-port={self.wireguard_listen_port} mtu=1420 private-key=\"{self.wireguard_private_key}\" comment=\"TikZone VPN\"\n"
@@ -219,7 +229,7 @@ class VpnCredential(models.Model):
             )
         else:
             # === SCRIPT ROUTEROS 6 (L2TP / IPSEC) ===
-            return (
+            script = (
                 f"/interface l2tp-client remove [find name=tikzone-vpn]\n"
                 f"/interface l2tp-client remove [find name=mikroot-vpn]\n"
                 f"/interface l2tp-client add connect-to={endpoint_host} name=tikzone-vpn user=\"{self.vpn_user}\" password=\"{self.vpn_password}\" disabled=no add-default-route=no use-ipsec=yes ipsec-secret=\"{self.vpn_password}\" comment=\"TikZone VPN\"\n"
@@ -229,6 +239,21 @@ class VpnCredential(models.Model):
                 f"/ip firewall filter remove [find comment=\"Mikroot VPN API\"]\n"
                 f"/ip firewall filter add action=accept chain=input in-interface=tikzone-vpn comment=\"TikZone VPN API\" place-before=0"
             )
+
+        # Si le routeur est configuré en mode Cloud RADIUS (Recommandé)
+        router_hotspot_type = getattr(self.router, "hotspot_type", Router.HotspotType.RADIUS)
+        if router_hotspot_type == Router.HotspotType.RADIUS:
+            secret = getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret-2026")
+            assigned_ip = self.assigned_ip or "172.29.88.2"
+            radius_block = (
+                f"\n\n# === MOTEUR CLOUD RADIUS TIKZONE ===\n"
+                f"/radius remove [find comment=\"TikZone RADIUS\"]\n"
+                f"/radius add service=hotspot address=172.29.88.1 secret=\"{secret}\" src-address={assigned_ip} timeout=2500ms comment=\"TikZone RADIUS\"\n"
+                f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m"
+            )
+            script += radius_block
+
+        return script
 
 
 class HotspotBatch(models.Model):

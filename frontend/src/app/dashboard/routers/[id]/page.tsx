@@ -482,33 +482,55 @@ export default function RouterDashboardPage({ params }: PageProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
-              <button
-                type="button"
-                onClick={() => setShowCredentialsModal(true)}
-                className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Mes identifiants MikroTik</span>
-              </button>
+            <div className="flex items-center gap-2 shrink-0 flex-nowrap self-start sm:self-center">
+              <div className="relative group">
+                <button
+                  type="button"
+                  title="Consulter et modifier les identifiants d'accès API de votre MikroTik"
+                  onClick={() => setShowCredentialsModal(true)}
+                  className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer whitespace-nowrap"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Mes identifiants MikroTik</span>
+                </button>
+                <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-30 pointer-events-none">
+                  <div className="bg-slate-900 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap border border-slate-700">
+                    Consulter et modifier vos identifiants API MikroTik
+                  </div>
+                </div>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  const scriptToCopy = router?.vpn?.mikrotik_script || router?.script || "";
-                  if (scriptToCopy) {
-                    navigator.clipboard.writeText(scriptToCopy);
-                    setCopiedScript(true);
-                    setTimeout(() => setCopiedScript(false), 2000);
-                  } else {
-                    alert("Script introuvable. Veuillez recharger la page.");
+              <div className="relative group">
+                <button
+                  type="button"
+                  title={
+                    router?.hotspot_type === "RADIUS"
+                      ? "Copier le script complet (VPN WireGuard + Client RADIUS) pour WinBox"
+                      : "Copier le script complet d'initialisation pour New Terminal WinBox"
                   }
-                }}
-                className="inline-flex items-center gap-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-md transition-all self-start sm:self-center cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>{copiedScript ? "Script copié !" : "Copier le script MikroTik"}</span>
-              </button>
+                  onClick={() => {
+                    const scriptToCopy = router?.vpn?.mikrotik_script || router?.script || "";
+                    if (scriptToCopy) {
+                      navigator.clipboard.writeText(scriptToCopy);
+                      setCopiedScript(true);
+                      setTimeout(() => setCopiedScript(false), 2000);
+                    } else {
+                      alert("Script introuvable. Veuillez recharger la page.");
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl border border-amber-700/50 shadow-md transition-all cursor-pointer whitespace-nowrap"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{copiedScript ? "Script copié !" : "Copier le script"}</span>
+                </button>
+                <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-30 pointer-events-none">
+                  <div className="bg-slate-900 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap border border-slate-700">
+                    {router?.hotspot_type === "RADIUS"
+                      ? "Copier le script complet (VPN WireGuard + Client RADIUS) pour New Terminal"
+                      : "Copier le script d'initialisation pour New Terminal WinBox"}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -891,11 +913,13 @@ export default function RouterDashboardPage({ params }: PageProps) {
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
                   >
                     <option value="default">default</option>
-                    {profiles.map((p) => (
-                      <option key={p.id || p.name} value={p.name}>
-                        {p.name} ({p.rate_limit || "Illimité"})
-                      </option>
-                    ))}
+                    {profiles
+                      .filter((p) => p.name?.toLowerCase() !== "default")
+                      .map((p) => (
+                        <option key={p.id || p.name} value={p.name}>
+                          {p.name} ({p.rate_limit || "Illimité"})
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -1015,11 +1039,13 @@ export default function RouterDashboardPage({ params }: PageProps) {
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
                   >
                     <option value="default">default</option>
-                    {profiles.map((p) => (
-                      <option key={p.id || p.name} value={p.name}>
-                        {p.name} ({p.rate_limit || "Illimité"})
-                      </option>
-                    ))}
+                    {profiles
+                      .filter((p) => p.name?.toLowerCase() !== "default")
+                      .map((p) => (
+                        <option key={p.id || p.name} value={p.name}>
+                          {p.name} ({p.rate_limit || "Illimité"})
+                        </option>
+                      ))}
                   </select>
                 </div>
 

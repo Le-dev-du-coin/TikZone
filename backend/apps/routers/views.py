@@ -35,6 +35,7 @@ class CreateRouterView(APIView):
         api_user = serializer.validated_data.get("api_user", "admin") or "admin"
         api_password = serializer.validated_data.get("api_password", "") or ""
         auto_renew = serializer.validated_data.get("auto_renew", True)
+        hotspot_type = serializer.validated_data.get("hotspot_type", Router.HotspotType.RADIUS)
 
         try:
             mikhmon_instance = MikhmonInstance.objects.get(id=instance_id, user=request.user)
@@ -74,6 +75,7 @@ class CreateRouterView(APIView):
                 user=request.user,
                 mikhmon_instance=mikhmon_instance,
                 name=router_name,
+                hotspot_type=hotspot_type,
                 api_user=api_user,
                 api_password=api_password,
                 price_per_month=price,

@@ -70,6 +70,7 @@ function NewRouterForm() {
     }
     return "";
   });
+  const [hotspotType, setHotspotType] = useState<"RADIUS" | "STANDALONE">("RADIUS");
   const [routerName, setRouterName] = useState("");
   const [apiUser, setApiUser] = useState("admin");
   const [apiPassword, setApiPassword] = useState("");
@@ -90,6 +91,7 @@ function NewRouterForm() {
     routerName: string;
     spaceName: string;
     script: string;
+    hotspotType: "RADIUS" | "STANDALONE";
     apiPort: number;
     winboxPort: number;
     vpnServer: string;
@@ -147,7 +149,8 @@ function NewRouterForm() {
         selectedMikhmon,
         autoRenew,
         apiUser.trim() || "admin",
-        apiPassword
+        apiPassword,
+        hotspotType
       );
       const vpnCred = res.router.vpn;
       const targetInst = instances.find((i) => i.id === selectedMikhmon);
@@ -162,6 +165,7 @@ function NewRouterForm() {
         routerName: res.router.name,
         spaceName: targetInst ? targetInst.name : "votre espace",
         script: res.script,
+        hotspotType: res.router.hotspot_type || hotspotType,
         apiPort: vpnCred ? vpnCred.api_port : 41009,
         winboxPort: vpnCred ? vpnCred.winbox_port : 51009,
         vpnServer: serverDisplay,
@@ -230,6 +234,17 @@ function NewRouterForm() {
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               Rattaché à <strong>{createdSuccess.spaceName}.tikzone.net</strong> • Débit : <strong>-500 FCFA</strong> (Nouveau solde : {formatFCFA(createdSuccess.newBalance)})
             </p>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                createdSuccess.hotspotType === "RADIUS"
+                  ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                  : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
+              }`}>
+                {createdSuccess.hotspotType === "RADIUS"
+                  ? "★ Moteur Cloud RADIUS activé (VPN WireGuard + Client RADIUS configurés)"
+                  : "Moteur Local RouterOS (VPN WireGuard configuré)"}
+              </span>
+            </div>
           </div>
 
 
@@ -342,6 +357,84 @@ function NewRouterForm() {
               ))}
 
             </select>
+          </div>
+
+          {/* SÉLECTION DU MOTEUR HOTSPOT */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Type de Moteur Hotspot *
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option 1: Cloud RADIUS (Recommandé) */}
+              <button
+                type="button"
+                onClick={() => setHotspotType("RADIUS")}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                  hotspotType === "RADIUS"
+                    ? "border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-600/30 shadow-xs"
+                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="font-black text-xs sm:text-sm flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${hotspotType === "RADIUS" ? "bg-emerald-600" : "bg-slate-400"}`} />
+                    <span>Moteur Cloud RADIUS</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider">
+                    Recommandé ★
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mb-2 font-medium">
+                  Authentification déportée haute performance sur notre Cloud.
+                </p>
+                <ul className="space-y-1 text-[10px] text-slate-500 dark:text-slate-400">
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-emerald-600 font-bold">✓</span> 0 saturation CPU/RAM sur la box MikroTik
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-emerald-600 font-bold">✓</span> Jusqu'à 1 000 tickets créés en &lt; 50ms
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-emerald-600 font-bold">✓</span> Roaming multi-antennes / multi-bornes
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-emerald-600 font-bold">✓</span> Décompte précis du temps et volume en direct
+                  </li>
+                </ul>
+              </button>
+
+              {/* Option 2: Moteur Local RouterOS */}
+              <button
+                type="button"
+                onClick={() => setHotspotType("STANDALONE")}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                  hotspotType === "STANDALONE"
+                    ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 ring-2 ring-blue-600/30 shadow-xs"
+                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="font-black text-xs sm:text-sm flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${hotspotType === "STANDALONE" ? "bg-blue-600" : "bg-slate-400"}`} />
+                    <span>Moteur Local RouterOS</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mb-2 font-medium">
+                  Stockage et exécution des tickets directement dans la mémoire flash du MikroTik.
+                </p>
+                <ul className="space-y-1 text-[10px] text-slate-500 dark:text-slate-400">
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-blue-600 font-bold">✓</span> Fonctionne même si la connexion Internet est coupée
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-blue-600 font-bold">✓</span> Adapté aux petits réseaux (&lt; 50 utilisateurs)
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-slate-400 font-bold">•</span> Limité par la capacité mémoire de la box
+                  </li>
+                </ul>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">

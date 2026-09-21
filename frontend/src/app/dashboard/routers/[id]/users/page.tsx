@@ -759,11 +759,13 @@ export default function RouterUsersPage({ params }: PageProps) {
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
                   >
                     <option value="default">default</option>
-                    {profiles.map((p) => (
-                      <option key={p.id || p.name} value={p.name}>
-                        {p.name} ({p.price || "100 FCFA"})
-                      </option>
-                    ))}
+                    {profiles
+                      .filter((p) => p.name?.toLowerCase() !== "default")
+                      .map((p) => (
+                        <option key={p.id || p.name} value={p.name}>
+                          {p.name} ({p.price || "100 FCFA"})
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>

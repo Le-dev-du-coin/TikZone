@@ -31,6 +31,7 @@ export interface RouterData {
   id: string;
   name: string;
   hotspot_name?: string;
+  hotspot_type?: "RADIUS" | "STANDALONE";
   api_user?: string;
   api_password?: string;
   status: "ACTIVE" | "EXPIRED" | "SUSPENDED";
@@ -126,7 +127,14 @@ export const api = {
     return await res.json();
   },
 
-  async createRouter(name: string, instanceId: string, autoRenew = true, apiUser = "admin", apiPassword = "") {
+  async createRouter(
+    name: string,
+    instanceId: string,
+    autoRenew = true,
+    apiUser = "admin",
+    apiPassword = "",
+    hotspotType: "RADIUS" | "STANDALONE" = "RADIUS"
+  ) {
     const res = await fetch(`${API_BASE}/routers/create/`, {
       method: "POST",
       headers: getAuthHeaders(),
@@ -136,6 +144,7 @@ export const api = {
         auto_renew: autoRenew,
         api_user: apiUser,
         api_password: apiPassword,
+        hotspot_type: hotspotType,
       }),
     });
     const data = await res.json();
