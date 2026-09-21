@@ -53,7 +53,7 @@ export default function RouterProfilesPage({ params }: PageProps) {
   const loadData = async () => {
     try {
       const res = await api.getRouterProfiles(routerId);
-      const parsed = res.results || [];
+      const parsed = (res.results || []).filter((p: any) => p.name?.toLowerCase() !== "default");
       setProfiles(parsed);
       try {
         localStorage.setItem(`tikzone_cached_profiles_${routerId}`, JSON.stringify(parsed));

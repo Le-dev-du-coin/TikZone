@@ -13,11 +13,29 @@ from .models import Router, VpnCredential
 from .serializers import CreateRouterSerializer, RouterSerializer
 
 
+def get_user_router_or_404(user, router_id, select_related=None):
+    """Récupère un routeur de manière étanche selon le rôle (Technicien vs Gérant)."""
+    qs = Router.objects.all()
+    if select_related:
+        qs = qs.select_related(*select_related)
+    if getattr(user, "role", None) == "CLIENT_MANAGER":
+        if not getattr(user, "managed_instance_id", None):
+            raise Router.DoesNotExist("Aucun espace assigné à ce compte.")
+        return qs.get(id=router_id, mikhmon_instance_id=user.managed_instance_id)
+    return qs.get(id=router_id, user=user)
+
+
 class RouterListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        routers = Router.objects.filter(user=request.user).select_related("mikhmon_instance", "vpn_credential")
+        if getattr(request.user, "role", None) == "CLIENT_MANAGER":
+            if request.user.managed_instance_id:
+                routers = Router.objects.filter(mikhmon_instance_id=request.user.managed_instance_id).select_related("mikhmon_instance", "vpn_credential")
+            else:
+                routers = Router.objects.none()
+        else:
+            routers = Router.objects.filter(user=request.user).select_related("mikhmon_instance", "vpn_credential")
         return Response(RouterSerializer(routers, many=True).data)
 
 
@@ -116,14 +134,14 @@ class RouterDetailView(APIView):
 
     def get(self, request, router_id):
         try:
-            router = Router.objects.get(id=router_id, user=request.user)
+            router = get_user_router_or_404(request.user, router_id)
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
         return Response(RouterSerializer(router).data)
 
     def patch(self, request, router_id):
         try:
-            router = Router.objects.get(id=router_id, user=request.user)
+            router = get_user_router_or_404(request.user, router_id)
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -160,6 +178,11 @@ class RouterDetailView(APIView):
         })
 
     def delete(self, request, router_id):
+        if getattr(request.user, "role", None) == "CLIENT_MANAGER":
+            return Response(
+                {"detail": "Seul le technicien/administrateur peut supprimer ce routeur."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             router = Router.objects.get(id=router_id, user=request.user)
         except Router.DoesNotExist:
@@ -330,8 +353,8 @@ class RouterSystemInfoView(APIView):
     def get(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -347,8 +370,8 @@ class RouterHotspotOverviewView(APIView):
     def get(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -364,8 +387,8 @@ class RouterHotspotUsersView(APIView):
     def get(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -377,8 +400,8 @@ class RouterHotspotUsersView(APIView):
     def post(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -401,8 +424,8 @@ class RouterHotspotUsersView(APIView):
     def delete(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -428,8 +451,8 @@ class RouterGenerateTicketsView(APIView):
     def post(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -477,8 +500,8 @@ class RouterHotspotProfilesView(APIView):
     def get(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -489,8 +512,8 @@ class RouterHotspotProfilesView(APIView):
     def post(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -522,8 +545,8 @@ class RouterHotspotProfilesView(APIView):
     def patch(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -557,8 +580,8 @@ class RouterHotspotProfilesView(APIView):
     def delete(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -581,8 +604,8 @@ class RouterSalesReportView(APIView):
     def get(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -602,8 +625,8 @@ class RouterSalesReportPdfView(APIView):
         import datetime
 
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -627,8 +650,8 @@ class RouterLogsView(APIView):
     def get(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -645,8 +668,8 @@ class RouterDisconnectActiveView(APIView):
     def post(self, request, router_id, active_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -665,8 +688,8 @@ class RouterRebootView(APIView):
     def post(self, request, router_id):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -682,8 +705,8 @@ class RouterUpdateUserLimitsView(APIView):
     def patch(self, request, router_id, username):
         from .services.mikrotik import MikrotikService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -708,8 +731,8 @@ class RouterSaaSTicketsView(APIView):
     def get(self, request, router_id):
         from .models import HotspotTicket
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -761,8 +784,8 @@ class RouterSaaSTicketsView(APIView):
     def post(self, request, router_id):
         from .services.radius_engine import RadiusEngineService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -815,8 +838,8 @@ class RouterSaaSTicketsView(APIView):
     def delete(self, request, router_id):
         from .models import HotspotTicket
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
@@ -839,8 +862,8 @@ class RouterRadiusSetupScriptView(APIView):
     def get(self, request, router_id):
         from .services.radius_engine import RadiusEngineService
         try:
-            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
-                id=router_id, user=request.user
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)

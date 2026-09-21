@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, RouterData } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { ChevronDown, Plus, Radio, Server } from "lucide-react";
 
 interface RouterSwitcherProps {
@@ -10,6 +11,7 @@ interface RouterSwitcherProps {
 }
 
 export default function RouterSwitcher({ currentRouterId }: RouterSwitcherProps) {
+  const { user } = useAuth();
   const router = useRouter();
   const [routers, setRouters] = useState<RouterData[]>(() => {
     if (typeof window !== "undefined") {
@@ -104,18 +106,20 @@ export default function RouterSwitcher({ currentRouterId }: RouterSwitcherProps)
               })}
             </div>
 
-            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800">
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  router.push("/dashboard/routers/new");
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-xl transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Rattacher un autre routeur</span>
-              </button>
-            </div>
+            {user?.role !== "CLIENT_MANAGER" && (
+              <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    router.push("/dashboard/routers/new");
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-xl transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Rattacher un autre routeur</span>
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}

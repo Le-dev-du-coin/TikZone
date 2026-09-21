@@ -36,8 +36,10 @@ class MikhmonInstance(models.Model):
         choices=RouterOSVersion.choices,
         default=RouterOSVersion.V7,
     )
-    admin_user = models.CharField("Nom d'utilisateur Mikhmon", max_length=50, default="admin")
-    admin_password = models.CharField("Mot de passe Mikhmon", max_length=100, default="mikroot2026")
+    admin_user = models.CharField("Nom d'utilisateur Espace", max_length=50, default="admin")
+    admin_password = models.CharField("Mot de passe Espace", max_length=100, default="mikroot2026")
+    client_name = models.CharField("Nom du propriétaire / Client", max_length=150, blank=True, default="")
+    client_phone = models.CharField("Numéro WhatsApp du propriétaire", max_length=30, blank=True, default="")
     is_active = models.BooleanField("Actif", default=True)
     created_at = models.DateTimeField("Date d'achat", auto_now_add=True)
     updated_at = models.DateTimeField("Dernière mise à jour", auto_now=True)

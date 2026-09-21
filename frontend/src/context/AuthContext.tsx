@@ -8,10 +8,14 @@ const API_BASE = rawApi.endsWith("/api") ? rawApi : `${rawApi.replace(/\/+$/, ""
 export interface UserProfile {
   id: string;
   email: string;
+  username?: string;
   full_name: string;
   phone_number: string;
   country: string;
-  role: "SUPERADMIN" | "TECHNICIAN" | "OWNER";
+  role: "SUPERADMIN" | "TECHNICIAN" | "OWNER" | "CLIENT_MANAGER";
+  managed_instance_id?: string;
+  managed_instance_name?: string;
+  managed_router_id?: string;
   created_at: string;
 }
 

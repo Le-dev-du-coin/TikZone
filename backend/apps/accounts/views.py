@@ -32,9 +32,28 @@ class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        email = request.data.get("email", "").strip().lower()
+        identifier = request.data.get("email") or request.data.get("username", "")
+        identifier = str(identifier).strip()
         password = request.data.get("password", "")
-        user = authenticate(request, email=email, password=password)
+
+        user = None
+        # 1. Tentative d'authentification standard (email)
+        if "@" in identifier:
+            user = authenticate(request, email=identifier.lower(), password=password)
+
+        # 2. Si non trouvé ou identifiant sans @, chercher par username ou email
+        if not user:
+            from django.db.models import Q
+            from .models import User
+            try:
+                candidate = User.objects.filter(
+                    Q(email__iexact=identifier) | Q(username__iexact=identifier),
+                    is_active=True,
+                ).first()
+                if candidate and candidate.check_password(password):
+                    user = candidate
+            except Exception:
+                user = None
 
         if user:
             login(request, user)
@@ -46,7 +65,7 @@ class LoginView(APIView):
                 }
             )
         return Response(
-            {"detail": "Identifiants invalides (email ou mot de passe incorrect)."},
+            {"detail": "Identifiants invalides (email/identifiant ou mot de passe incorrect)."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
 

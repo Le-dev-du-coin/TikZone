@@ -2,6 +2,7 @@
 
 import CopyButton from "@/components/CopyButton";
 import MikhmonLaunchModal from "@/components/MikhmonLaunchModal";
+import { useAuth } from "@/context/AuthContext";
 import { api, InstanceData, RouterData } from "@/lib/api";
 import { BASE_DOMAIN } from "@/lib/config";
 import { formatFCFA } from "@/lib/utils";
@@ -15,21 +16,37 @@ import {
   Copy,
   ExternalLink,
   KeyRound,
+  MessageSquare,
+  Phone,
   Plus,
   RefreshCw,
   Router as RouterIcon,
   Search,
   Server,
+  Share2,
   ShieldCheck,
   Sparkles,
   Trash2,
+  UserCheck,
   Wifi,
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function ClientDashboardPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user?.role === "CLIENT_MANAGER") {
+      if (user.managed_router_id) {
+        router.replace(`/dashboard/routers/${user.managed_router_id}`);
+      }
+    }
+  }, [user, router]);
+
   const [instances, setInstances] = useState<InstanceData[]>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -148,6 +165,23 @@ export default function ClientDashboardPage() {
       showToast(err.message || "Erreur lors du renouvellement", "error");
     } finally {
       setRenewing(false);
+    }
+  };
+
+  const handleShareClientAccess = (inst: InstanceData) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://app.tikzone.net";
+    const loginUrl = `${origin}/login?user=${encodeURIComponent(inst.admin_user || "admin")}`;
+    const clientName = inst.client_name ? ` ${inst.client_name}` : "";
+    const cleanPhone = (inst.client_phone || "").replace(/\D/g, "");
+
+    const msg = `Bonjour${clientName},\nVoici votre lien pour gérer vos tickets WiFi Zone (${inst.name}) :\n\nLien : ${loginUrl}\nIdentifiant : ${inst.admin_user || "admin"}\nMot de passe : ${inst.admin_password || "mikroot2026"}\n\nEnregistrez vos identifiants pour vous connecter en 1 clic.`;
+
+    if (cleanPhone) {
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+      showToast(`WhatsApp ouvert pour ${inst.client_name || inst.name} !`, "success");
+    } else {
+      navigator.clipboard.writeText(msg);
+      showToast("Lien et accès copiés dans le presse-papier !", "success");
     }
   };
 
@@ -381,6 +415,18 @@ export default function ClientDashboardPage() {
                           <span className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] font-medium">
                             {routers.length} routeur(s) connecté(s)
                           </span>
+                          {instance.client_name && (
+                            <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-750 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <UserCheck className="w-3 h-3 text-blue-500" />
+                              <span>{instance.client_name}</span>
+                            </span>
+                          )}
+                          {instance.client_phone && (
+                            <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                              <Phone className="w-3 h-3" />
+                              <span>{instance.client_phone}</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -404,10 +450,20 @@ export default function ClientDashboardPage() {
                   </div>
 
                   {/* Header Actions */}
-                  <div className="flex items-center gap-2 w-full lg:w-auto">
+                  <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => handleShareClientAccess(instance)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-xl border border-emerald-300 dark:border-emerald-700 transition-colors shadow-2xs cursor-pointer"
+                      title="Envoyer les accès au client par WhatsApp ou copier le lien"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Accès Client</span>
+                    </button>
+
                     <Link
                       href={`/dashboard/routers/new?space=${instance.id}`}
-                      className="flex-1 lg:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-colors shadow-2xs"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-colors shadow-2xs"
                     >
                       <Plus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       <span>Ajouter Routeur</span>
@@ -503,7 +559,9 @@ export default function ClientDashboardPage() {
                                     : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                                 }`}
                               >
-                                {daysLeft}j restants
+                                {router.expires_at_formatted
+                                  ? `Expire le ${router.expires_at_formatted} (${daysLeft}j)`
+                                  : `${daysLeft}j restants`}
                               </span>
                             </div>
 

@@ -3,31 +3,49 @@
 import LangToggle from "@/components/LangToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
-import { AlertCircle, ArrowLeft, ArrowRight, Lock, Mail, Wifi } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Lock, Mail, User, Wifi } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const userParam = searchParams.get("user") || searchParams.get("email");
+    if (userParam) {
+      setIdentifier(userParam);
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setIsLoading(true);
 
-    const result = await login(email.trim(), password);
+    const result = await login(identifier.trim(), password);
     setIsLoading(false);
 
     if (result.success) {
+      try {
+        const cached = localStorage.getItem("mikroot_user");
+        if (cached) {
+          const user = JSON.parse(cached);
+          if (user.role === "CLIENT_MANAGER" && user.managed_router_id) {
+            router.push(`/dashboard/routers/${user.managed_router_id}`);
+            return;
+          }
+        }
+      } catch {}
       router.push("/dashboard");
     } else {
-      setErrorMessage(result.error || "Email ou mot de passe incorrect.");
+      setErrorMessage(result.error || "Identifiant ou mot de passe incorrect.");
     }
   };
 
@@ -77,17 +95,18 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} suppressHydrationWarning className="space-y-4">
           <div className="space-y-1.5" suppressHydrationWarning>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Email
+              Email ou Identifiant
             </label>
             <div className="relative" suppressHydrationWarning>
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
-                type="email"
+                type="text"
+                name="username"
                 required
-                autoComplete="email"
-                placeholder="siramanass@tikzone.net"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+                placeholder="Ex: amadou ou email"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 suppressHydrationWarning
                 className="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-white font-medium"
               />
@@ -104,6 +123,7 @@ export default function LoginPage() {
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="password"
+                name="password"
                 required
                 autoComplete="current-password"
                 placeholder="••••••••••••"
@@ -149,5 +169,13 @@ export default function LoginPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-xs text-slate-400">Chargement...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

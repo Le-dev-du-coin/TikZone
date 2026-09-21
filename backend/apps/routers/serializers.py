@@ -26,6 +26,7 @@ class RouterSerializer(serializers.ModelSerializer):
     mikhmon_name = serializers.CharField(source="mikhmon_instance.name", read_only=True)
     mikhmon_url = serializers.CharField(source="mikhmon_instance.subdomain_url", read_only=True)
     days_left = serializers.IntegerField(source="remaining_days", read_only=True)
+    expires_at_formatted = serializers.SerializerMethodField()
 
     class Meta:
         model = Router
@@ -41,6 +42,7 @@ class RouterSerializer(serializers.ModelSerializer):
             "mikhmon_name",
             "mikhmon_url",
             "days_left",
+            "expires_at_formatted",
             "price_per_month",
             "auto_renew",
             "expires_at",
@@ -48,7 +50,12 @@ class RouterSerializer(serializers.ModelSerializer):
             "vpn",
             "created_at",
         ]
-        read_only_fields = ["id", "status", "days_left", "expires_at", "last_ping", "created_at"]
+        read_only_fields = ["id", "status", "days_left", "expires_at", "expires_at_formatted", "last_ping", "created_at"]
+
+    def get_expires_at_formatted(self, obj) -> str:
+        if not obj.expires_at:
+            return "N/A"
+        return obj.expires_at.strftime("%d/%m/%Y")
 
 
 class CreateRouterSerializer(serializers.Serializer):

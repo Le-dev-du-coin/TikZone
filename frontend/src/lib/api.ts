@@ -19,6 +19,8 @@ function getAuthHeaders(): HeadersInit {
 export interface InstanceData {
   id: string;
   name: string;
+  client_name?: string;
+  client_phone?: string;
   subdomain_url: string;
   routeros_version: "V7" | "V6";
   admin_user?: string;
@@ -39,6 +41,7 @@ export interface RouterData {
   mikhmon_name?: string;
   mikhmon_url?: string;
   days_left: number;
+  expires_at_formatted?: string;
   price_per_month: string;
   auto_renew: boolean;
   expires_at: string;
@@ -87,11 +90,25 @@ export const api = {
     return await res.json();
   },
 
-  async purchaseInstance(name: string, routerosVersion: "V7" | "V6") {
+  async purchaseInstance(
+    name: string,
+    routerosVersion: "V7" | "V6",
+    clientName = "",
+    clientPhone = "",
+    adminUser = "admin",
+    adminPassword = "pass"
+  ) {
     const res = await fetch(`${API_BASE}/instances/purchase/`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ name, routeros_version: routerosVersion }),
+      body: JSON.stringify({
+        name,
+        routeros_version: routerosVersion,
+        client_name: clientName,
+        client_phone: clientPhone,
+        admin_user: adminUser,
+        admin_password: adminPassword,
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -102,6 +119,19 @@ export const api = {
       walletEvents.emitBalanceUpdated(data.new_balance);
     }
     return data;
+  },
+
+  async updateInstance(instanceId: string, data: { client_name?: string; client_phone?: string; admin_user?: string; admin_password?: string }) {
+    const res = await fetch(`${API_BASE}/instances/${instanceId}/`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) {
+      throw new Error(resData.detail || "Erreur de mise à jour de l'espace");
+    }
+    return resData;
   },
 
   async deleteInstance(instanceId: string) {

@@ -38,9 +38,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         SUPERADMIN = "SUPERADMIN", "Super Administrateur"
         TECHNICIAN = "TECHNICIAN", "Technicien / Installateur"
         OWNER = "OWNER", "Propriétaire WiFi Zone"
+        CLIENT_MANAGER = "CLIENT_MANAGER", "Gérant de Point de Vente / Client"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField("Adresse Email", unique=True, db_index=True)
+    username = models.CharField("Nom d'utilisateur / Pseudo", max_length=50, blank=True, null=True, unique=True, db_index=True)
     full_name = models.CharField("Nom complet ou Entreprise", max_length=255, blank=True)
     phone_number = models.CharField("Numéro de téléphone (WhatsApp)", max_length=30, blank=True)
     country = models.CharField("Pays", max_length=50, default="Mali")
@@ -50,6 +52,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=20,
         choices=Role.choices,
         default=Role.OWNER,
+    )
+
+    managed_instance = models.ForeignKey(
+        "instances.MikhmonInstance",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managers",
+        help_text="Espace assigné à ce gérant (confinement strict).",
     )
 
     is_active = models.BooleanField("Actif", default=True)

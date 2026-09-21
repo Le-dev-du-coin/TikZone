@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useAuth } from "@/context/AuthContext";
 
 interface RouterSidebarProps {
   routerId: string;
@@ -44,6 +45,7 @@ export default function RouterSidebar({
   isCollapsed = false,
   onToggleCollapse,
 }: RouterSidebarProps) {
+  const { user } = useAuth();
   const pathname = usePathname();
   const [hotspotOpen, setHotspotOpen] = useState(true);
   const displayName = hotspotName || routerName || "Routeur Hotspot";
@@ -159,20 +161,22 @@ export default function RouterSidebar({
           </div>
         </div>
 
-        {/* Back to Global Hub */}
-        <div className={`p-3 ${isCollapsed ? "flex justify-center" : ""}`}>
-          <Link
-            href="/dashboard"
-            onClick={onClose}
-            title="Retour au Hub Principal TikZone"
-            className={`flex items-center gap-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors group cursor-pointer ${
-              isCollapsed ? "p-2.5 justify-center" : "px-3 py-2"
-            }`}
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform shrink-0" />
-            {!isCollapsed && <span>← Retour au Hub</span>}
-          </Link>
-        </div>
+        {/* Back to Global Hub (uniquement pour les techniciens / propriétaires, masqué pour le gérant confiné) */}
+        {user?.role !== "CLIENT_MANAGER" && (
+          <div className={`p-3 ${isCollapsed ? "flex justify-center" : ""}`}>
+            <Link
+              href="/dashboard"
+              onClick={onClose}
+              title="Retour au Hub Principal TikZone"
+              className={`flex items-center gap-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors group cursor-pointer ${
+                isCollapsed ? "p-2.5 justify-center" : "px-3 py-2"
+              }`}
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+              {!isCollapsed && <span>← Retour au Hub</span>}
+            </Link>
+          </div>
+        )}
 
         {/* Navigation List */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">

@@ -547,6 +547,7 @@ class MikrotikService:
                     "comment": p.get("comment", ""),
                 }
                 for p in profiles_res
+                if p.get("name", "").strip().lower() != "default"
             ]
             cache.set(profiles_cache_key, profiles, timeout=60)
             return profiles

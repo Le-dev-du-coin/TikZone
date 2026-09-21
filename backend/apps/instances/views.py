@@ -9,11 +9,51 @@ from .models import MikhmonInstance
 from .serializers import MikhmonInstanceSerializer, PurchaseInstanceSerializer
 
 
+def sync_manager_user(instance):
+    """Synchronise un compte User Django (CLIENT_MANAGER) pour cet espace."""
+    from apps.accounts.models import User
+    username = instance.admin_user.strip() if instance.admin_user else f"gerant_{instance.name}"
+    email = f"{username}_{instance.name}@tikzone.local"
+
+    user = User.objects.filter(managed_instance=instance).first()
+    if not user:
+        user = User.objects.filter(username__iexact=username).first()
+
+    if not user:
+        user = User(
+            email=email,
+            username=username,
+            full_name=instance.client_name or f"Gérant {instance.name}",
+            phone_number=instance.client_phone or "",
+            role=User.Role.CLIENT_MANAGER,
+            managed_instance=instance,
+        )
+    else:
+        user.username = username
+        user.managed_instance = instance
+        if instance.client_name:
+            user.full_name = instance.client_name
+        if instance.client_phone:
+            user.phone_number = instance.client_phone
+        user.role = User.Role.CLIENT_MANAGER
+
+    if instance.admin_password:
+        user.set_password(instance.admin_password)
+    user.save()
+    return user
+
+
 class InstanceListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        instances = MikhmonInstance.objects.filter(user=request.user).prefetch_related("routers__vpn_credential")
+        if getattr(request.user, "role", None) == "CLIENT_MANAGER":
+            if request.user.managed_instance:
+                instances = MikhmonInstance.objects.filter(id=request.user.managed_instance_id).prefetch_related("routers__vpn_credential")
+            else:
+                instances = MikhmonInstance.objects.none()
+        else:
+            instances = MikhmonInstance.objects.filter(user=request.user).prefetch_related("routers__vpn_credential")
         return Response(MikhmonInstanceSerializer(instances, many=True).data)
 
 
@@ -50,12 +90,14 @@ class PurchaseInstanceView(APIView):
                 type=Transaction.Type.BUY_INSTANCE,
                 status=Transaction.Status.COMPLETED,
                 payment_method=Transaction.PaymentMethod.WALLET,
-                description=f"Achat de l'instance Mikhmon '{instance.name}'",
+                description=f"Achat de l'espace '{instance.name}'",
             )
+            # Synchronisation immédiate du compte gérant
+            sync_manager_user(instance)
 
         return Response(
             {
-                "detail": f"Instance '{instance.name}' créée avec succès !",
+                "detail": f"Espace '{instance.name}' créé avec succès !",
                 "instance": MikhmonInstanceSerializer(instance).data,
                 "new_balance": wallet.balance,
             },
@@ -64,14 +106,34 @@ class PurchaseInstanceView(APIView):
 
 
 class InstanceDetailView(APIView):
-    """Détail et suppression d'un espace Mikhmon."""
+    """Détail, mise à jour et suppression d'un espace."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, instance_id):
         try:
+            if getattr(request.user, "role", None) == "CLIENT_MANAGER":
+                if str(instance_id) != str(getattr(request.user, "managed_instance_id", "")):
+                    return Response({"detail": "Accès non autorisé à cet espace."}, status=status.HTTP_403_FORBIDDEN)
+                instance = MikhmonInstance.objects.get(id=instance_id)
+            else:
+                instance = MikhmonInstance.objects.get(id=instance_id, user=request.user)
+        except MikhmonInstance.DoesNotExist:
+            return Response({"detail": "Instance introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(MikhmonInstanceSerializer(instance).data)
+
+    def patch(self, request, instance_id):
+        try:
             instance = MikhmonInstance.objects.get(id=instance_id, user=request.user)
         except MikhmonInstance.DoesNotExist:
             return Response({"detail": "Instance introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        for field in ["client_name", "client_phone", "admin_user", "admin_password"]:
+            if field in request.data:
+                setattr(instance, field, request.data[field])
+
+        instance.save()
+        sync_manager_user(instance)
+
         return Response(MikhmonInstanceSerializer(instance).data)
 
     def delete(self, request, instance_id):
@@ -94,6 +156,6 @@ class InstanceDetailView(APIView):
         instance_name = instance.name
         instance.delete()
         return Response(
-            {"detail": f"L'espace Mikhmon '{instance_name}' a été supprimé avec succès."},
+            {"detail": f"L'espace '{instance_name}' a été supprimé avec succès."},
             status=status.HTTP_200_OK,
         )

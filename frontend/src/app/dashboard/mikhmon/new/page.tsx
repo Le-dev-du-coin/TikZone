@@ -2,7 +2,7 @@
 
 import { api } from "@/lib/api";
 import { formatFCFA } from "@/lib/utils";
-import { AlertCircle, ArrowLeft, CheckCircle2, Globe, Info, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Globe, Info, Key, Phone, ShieldCheck, Sparkles, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,6 +11,10 @@ export default function DashboardNewMikhmonPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [version, setVersion] = useState<"V7" | "V6">("V7");
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [adminUser, setAdminUser] = useState("admin");
+  const [adminPassword, setAdminPassword] = useState("mikroot2026");
   const [balance, setBalance] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const cached = localStorage.getItem("mikroot_last_balance");
@@ -47,7 +51,14 @@ export default function DashboardNewMikhmonPage() {
     setErrorMessage(null);
 
     try {
-      await api.purchaseInstance(name.trim(), version);
+      await api.purchaseInstance(
+        name.trim(),
+        version,
+        clientName.trim(),
+        clientPhone.trim(),
+        adminUser.trim() || "admin",
+        adminPassword.trim() || "mikroot2026"
+      );
       router.push("/dashboard");
     } catch (err: any) {
       setErrorMessage(err.message || "Erreur lors de l'achat de l'espace Mikhmon.");
@@ -153,6 +164,92 @@ export default function DashboardNewMikhmonPage() {
             >
               <div className="font-bold text-slate-900 dark:text-white text-sm">RouterOS v6</div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Pour ROS 6.1 à 6.49</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Propriétaire du Point de Vente (Client) */}
+        <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Propriétaire du Point de Vente (Client)
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Le propriétaire est le responsable financier du hotspot. Il recevra les alertes WhatsApp pour le renouvellement du service.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Nom complet du propriétaire
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="ex: Mamadou Diallo"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-white transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Numéro WhatsApp du propriétaire
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="ex: +223 70 12 34 56"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900 dark:text-white transition-all"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Accès Direct Gérant / Client */}
+        <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Identifiants d'Accès Gérant / Client
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Ces identifiants permettront au client ou à son gérant d'accéder directement à son espace en se connectant sans voir vos autres clients.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Identifiant / Nom d'utilisateur
+              </label>
+              <input
+                type="text"
+                placeholder="ex: admin ou nom_client"
+                value={adminUser}
+                onChange={(e) => setAdminUser(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900 dark:text-white transition-all"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Mot de passe de l'espace
+              </label>
+              <input
+                type="text"
+                placeholder="ex: mikroot2026"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900 dark:text-white transition-all"
+              />
             </div>
           </div>
         </div>

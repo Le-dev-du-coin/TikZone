@@ -83,7 +83,13 @@ export default function RouterTicketsPage({ params }: PageProps) {
 
     api
       .getRouterProfiles(routerId)
-      .then((res) => setProfiles(res.results || []))
+      .then((res) => {
+        const list = (res.results || []).filter((p: any) => p.name?.toLowerCase() !== "default");
+        setProfiles(list);
+        if (list.length > 0) {
+          setProfile(list[0].name);
+        }
+      })
       .catch(() => {});
   }, [routerId]);
 

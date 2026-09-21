@@ -13,6 +13,8 @@ class MikhmonInstanceSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "client_name",
+            "client_phone",
             "subdomain_url",
             "routeros_version",
             "admin_user",
@@ -22,10 +24,15 @@ class MikhmonInstanceSerializer(serializers.ModelSerializer):
             "routers",
             "created_at",
         ]
-        read_only_fields = ["id", "admin_user", "admin_password", "is_active", "routers_count", "routers", "created_at"]
+        read_only_fields = ["id", "is_active", "routers_count", "routers", "created_at"]
 
 
 class PurchaseInstanceSerializer(serializers.ModelSerializer):
+    admin_user = serializers.CharField(max_length=50, required=False, default="admin")
+    admin_password = serializers.CharField(max_length=100, required=False, default="mikroot2026")
+    client_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    client_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+
     class Meta:
         model = MikhmonInstance
-        fields = ["name", "routeros_version"]
+        fields = ["name", "routeros_version", "admin_user", "admin_password", "client_name", "client_phone"]

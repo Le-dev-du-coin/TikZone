@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import RouterSidebar from "@/components/RouterSidebar";
 import RouterSwitcher from "@/components/RouterSwitcher";
 import { api, RouterData } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import {
   ArrowLeft,
   Copy,
@@ -19,6 +20,7 @@ interface RouterLayoutProps {
 }
 
 export default function RouterSpaceLayout({ children, params }: RouterLayoutProps) {
+  const { user } = useAuth();
   const resolvedParams = use(params);
   const routerId = resolvedParams.id;
 
@@ -160,15 +162,17 @@ export default function RouterSpaceLayout({ children, params }: RouterLayoutProp
               )}
             </div>
 
-            {/* Back to Hub TikZone button */}
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 bg-white dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-xl transition-all cursor-pointer"
-              title="Retourner à l'accueil TikZone"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Hub TikZone</span>
-            </Link>
+            {/* Back to Hub TikZone button (uniquement pour les techniciens / proprios, masqué pour le gérant confiné) */}
+            {user?.role !== "CLIENT_MANAGER" && (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 bg-white dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-xl transition-all cursor-pointer"
+                title="Retourner à l'accueil TikZone"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Hub TikZone</span>
+              </Link>
+            )}
           </div>
         </header>
 
