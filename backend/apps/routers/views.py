@@ -698,3 +698,159 @@ class RouterUpdateUserLimitsView(APIView):
         except Exception as e:
             return Response({"detail": f"Erreur : {e}"}, status=status.HTTP_400_BAD_REQUEST)
 
+
+class RouterSaaSTicketsView(APIView):
+    """Gestion native SaaS des tickets Hotspot (Stockage PostgreSQL & Moteur RADIUS)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from .models import HotspotTicket
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        qs = HotspotTicket.objects.filter(router=router).select_related("batch")
+
+        # Filtre par profil
+        profile = request.query_params.get("profile")
+        if profile and profile != "ALL":
+            qs = qs.filter(profile_name=profile)
+
+        # Filtre par statut
+        ticket_status = request.query_params.get("status")
+        if ticket_status:
+            qs = qs.filter(status=ticket_status)
+
+        # Recherche texte
+        search = request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(code__icontains=search)
+
+        total_count = qs.count()
+        tickets_list = [
+            {
+                "id": str(t.id),
+                "code": t.code,
+                "password": t.password,
+                "profile": t.profile_name,
+                "status": t.status,
+                "time_limit": t.batch.time_limit if t.batch else "3h",
+                "uptime_used_seconds": t.uptime_used_seconds,
+                "remaining_seconds": t.remaining_seconds,
+                "price": int(t.price),
+                "comment": t.comment,
+                "first_login_at": t.first_login_at,
+                "mac_address": t.mac_address,
+                "bytes_in": t.bytes_in,
+                "bytes_out": t.bytes_out,
+                "created_at": t.created_at,
+            }
+            for t in qs[:500]
+        ]
+
+        return Response({
+            "count": total_count,
+            "results": tickets_list,
+        })
+
+    def post(self, request, router_id):
+        from .services.radius_engine import RadiusEngineService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            raw_count = int(request.data.get("count", 20))
+            count = min(max(raw_count, 1), 1000)
+            auth_mode = request.data.get("auth_mode", "single")
+            profile_name = request.data.get("profile", "default")
+            time_limit = request.data.get("time_limit", "3h")
+            prefix = request.data.get("prefix", "")
+            raw_length = int(request.data.get("code_length", 6))
+            code_length = raw_length if raw_length in [4, 6, 8] else 6
+            code_format = request.data.get("code_format", "numeric")
+            price = int(request.data.get("price", 100))
+            comment = request.data.get("comment", "").strip()
+
+            batch, created_tickets = RadiusEngineService.generate_batch_in_db(
+                router=router,
+                count=count,
+                auth_mode=auth_mode,
+                profile_name=profile_name,
+                time_limit=time_limit,
+                prefix=prefix,
+                code_length=code_length,
+                code_format=code_format,
+                price=price,
+                comment=comment,
+            )
+
+            return Response({
+                "detail": f"{len(created_tickets)} tickets SaaS générés avec succès pour '{router.name}' !",
+                "batch_id": str(batch.id),
+                "count": len(created_tickets),
+                "tickets": [
+                    {
+                        "code": t.code,
+                        "password": t.password,
+                        "auth_mode": auth_mode,
+                        "profile": t.profile_name,
+                        "time_limit": time_limit,
+                        "price": int(t.price),
+                    }
+                    for t in created_tickets
+                ],
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"detail": f"Erreur génération SaaS : {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, router_id):
+        from .models import HotspotTicket
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        ticket_ids = request.data.get("ticket_ids", [])
+        if not ticket_ids:
+            return Response({"detail": "Aucun identifiant de ticket fourni."}, status=status.HTTP_400_BAD_REQUEST)
+
+        deleted_count, _ = HotspotTicket.objects.filter(router=router, id__in=ticket_ids).delete()
+        return Response({
+            "detail": f"{deleted_count} ticket(s) SaaS supprimé(s) avec succès.",
+            "deleted_count": deleted_count,
+        })
+
+
+class RouterRadiusSetupScriptView(APIView):
+    """Fournit le script RouterOS 1-clic pour raccorder le routeur au serveur RADIUS TikZone."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        from .services.radius_engine import RadiusEngineService
+        try:
+            router = Router.objects.select_related("vpn_credential", "mikhmon_instance").get(
+                id=router_id, user=request.user
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        secret = getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret")
+        script = RadiusEngineService.generate_mikrotik_radius_setup_script(router, secret=secret)
+        return Response({
+            "router_id": str(router.id),
+            "router_name": router.name,
+            "radius_server_ip": "172.29.88.1",
+            "radius_auth_port": 1812,
+            "radius_acct_port": 1813,
+            "script": script,
+        })
+

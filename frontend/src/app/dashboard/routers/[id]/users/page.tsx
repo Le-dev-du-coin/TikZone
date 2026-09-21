@@ -91,18 +91,40 @@ export default function RouterUsersPage({ params }: PageProps) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersRes, profRes] = await Promise.all([
+      const [usersRes, saasRes, profRes] = await Promise.all([
         api.getRouterHotspotUsers(routerId, 500).catch(() => ({ results: [] })),
+        api.getSaaSTickets(routerId).catch(() => ({ results: [] })),
         api.getRouterProfiles(routerId).catch(() => ({ results: [] })),
       ]);
-      const parsedUsers = usersRes.results || [];
+
+      const parsedRouterUsers = (usersRes.results || []).map((u: any) => ({
+        ...u,
+        source: "routeros",
+      }));
+
+      const parsedSaaSTickets = (saasRes.results || []).map((t: any) => ({
+        id: t.id,
+        name: t.code,
+        password: t.password,
+        profile: t.profile,
+        comment: t.comment || "Ticket Cloud RADIUS",
+        uptime: t.uptime_used_seconds ? `${Math.floor(t.uptime_used_seconds / 60)}m` : "0s",
+        bytes_in: t.bytes_in,
+        bytes_out: t.bytes_out,
+        source: "saas",
+        status: t.status,
+        price: t.price,
+        time_limit: t.time_limit,
+      }));
+
+      const combinedUsers = [...parsedSaaSTickets, ...parsedRouterUsers];
       const parsedProfiles = profRes.results || [];
 
-      setUsers(parsedUsers);
+      setUsers(combinedUsers);
       setProfiles(parsedProfiles);
 
       try {
-        localStorage.setItem(`tikzone_cached_users_${routerId}`, JSON.stringify(parsedUsers));
+        localStorage.setItem(`tikzone_cached_users_${routerId}`, JSON.stringify(combinedUsers));
         localStorage.setItem(`tikzone_cached_profiles_${routerId}`, JSON.stringify(parsedProfiles));
       } catch {}
     } catch (err) {
@@ -158,16 +180,25 @@ export default function RouterUsersPage({ params }: PageProps) {
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     const count = selectedIds.size;
-    if (!confirm(`Supprimer définitivement ${count} ticket(s) sélectionné(s) sur le routeur ?`)) {
+    if (!confirm(`Supprimer définitivement ${count} ticket(s) sélectionné(s) ?`)) {
       return;
     }
 
     setIsDeleting(true);
     setActionError(null);
     try {
-      const userIdsArray = Array.from(selectedIds);
-      await api.deleteRouterHotspotUsers(routerId, userIdsArray);
-      setActionSuccess(`${count} ticket(s) supprimé(s) avec succès du MikroTik !`);
+      const selectedUsersList = users.filter((u) => selectedIds.has(u.id));
+      const saasIds = selectedUsersList.filter((u) => u.source === "saas").map((u) => u.id);
+      const routerOsIds = selectedUsersList.filter((u) => u.source !== "saas").map((u) => u.id);
+
+      if (saasIds.length > 0) {
+        await api.deleteSaaSTickets(routerId, saasIds);
+      }
+      if (routerOsIds.length > 0) {
+        await api.deleteRouterHotspotUsers(routerId, routerOsIds);
+      }
+
+      setActionSuccess(`${count} ticket(s) supprimé(s) avec succès !`);
       setSelectedIds(new Set());
       await loadData();
       setTimeout(() => setActionSuccess(null), 3500);
@@ -554,9 +585,20 @@ export default function RouterUsersPage({ params }: PageProps) {
                             />
                           </td>
                           <td className="px-4 py-3">
-                            <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-xs">
-                              {u.name}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-xs">
+                                {u.name}
+                              </span>
+                              {u.source === "saas" ? (
+                                <span className="text-[9px] font-sans font-black uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                  Cloud RADIUS
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-sans font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                                  RouterOS
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3 font-sans">
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">

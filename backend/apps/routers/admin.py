@@ -22,3 +22,22 @@ class VpnCredentialAdmin(admin.ModelAdmin):
     list_display = ("router", "assigned_ip", "api_port", "winbox_port", "vpn_user", "vpn_server")
     search_fields = ("vpn_user", "router__name", "assigned_ip")
     readonly_fields = ("id", "created_at")
+
+
+from .models import HotspotBatch, HotspotTicket
+
+
+@admin.register(HotspotBatch)
+class HotspotBatchAdmin(admin.ModelAdmin):
+    list_display = ("name", "router", "profile_name", "auth_mode", "price", "count", "created_at")
+    list_filter = ("auth_mode", "created_at")
+    search_fields = ("name", "router__name", "profile_name")
+    readonly_fields = ("id", "created_at")
+
+
+@admin.register(HotspotTicket)
+class HotspotTicketAdmin(admin.ModelAdmin):
+    list_display = ("code", "router", "profile_name", "status", "price", "uptime_used_seconds", "first_login_at", "created_at")
+    list_filter = ("status", "profile_name", "created_at")
+    search_fields = ("code", "mac_address", "router__name")
+    readonly_fields = ("id", "created_at", "updated_at")

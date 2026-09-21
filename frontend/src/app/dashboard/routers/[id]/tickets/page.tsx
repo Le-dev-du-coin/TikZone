@@ -5,11 +5,18 @@ import { api } from "@/lib/api";
 import {
   AlertCircle,
   ArrowLeft,
+  Check,
   CheckCircle2,
+  Copy,
   FileDown,
   Printer,
+  Radio,
+  Server,
+  ShieldCheck,
   Sparkles,
+  Terminal,
   Ticket,
+  X,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -22,6 +29,8 @@ export default function RouterTicketsPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const routerId = resolvedParams.id;
 
+  // Choix du moteur : SaaS Cloud RADIUS (par défaut) ou RouterOS local
+  const [engineMode, setEngineMode] = useState<"saas" | "routeros">("saas");
   const [authMode, setAuthMode] = useState<"single" | "dual">("single");
   const [profiles, setProfiles] = useState<any[]>([]);
   const [count, setCount] = useState(20);
@@ -38,6 +47,12 @@ export default function RouterTicketsPage({ params }: PageProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [tickets, setTickets] = useState<any[]>([]);
   const [printFormat, setPrintFormat] = useState<"thermal" | "grid">("grid");
+
+  // Modal Script RADIUS 1-Clic MikroTik
+  const [showRadiusModal, setShowRadiusModal] = useState(false);
+  const [radiusScriptLoading, setRadiusScriptLoading] = useState(false);
+  const [radiusScriptData, setRadiusScriptData] = useState<any>(null);
+  const [copiedScript, setCopiedScript] = useState(false);
 
   const [routerData, setRouterData] = useState<any>(() => {
     if (typeof window !== "undefined") {
@@ -73,13 +88,36 @@ export default function RouterTicketsPage({ params }: PageProps) {
       .catch(() => {});
   }, [routerId]);
 
+  const handleOpenRadiusModal = async () => {
+    setShowRadiusModal(true);
+    if (!radiusScriptData) {
+      setRadiusScriptLoading(true);
+      try {
+        const data = await api.getRadiusSetupScript(routerId);
+        setRadiusScriptData(data);
+      } catch (err: any) {
+        setErrorMsg(err.message || "Erreur de chargement du script RADIUS");
+      } finally {
+        setRadiusScriptLoading(false);
+      }
+    }
+  };
+
+  const handleCopyRadiusScript = () => {
+    if (radiusScriptData?.script) {
+      navigator.clipboard.writeText(radiusScriptData.script);
+      setCopiedScript(true);
+      setTimeout(() => setCopiedScript(false), 2500);
+    }
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
     try {
-      const res = await api.generateRouterTickets(routerId, {
+      const payload = {
         count: Math.min(Math.max(count, 1), 1000),
         auth_mode: authMode,
         profile,
@@ -89,9 +127,21 @@ export default function RouterTicketsPage({ params }: PageProps) {
         code_format: codeFormat,
         price,
         comment: customComment,
-      });
+      };
+
+      let res;
+      if (engineMode === "saas") {
+        res = await api.generateSaaSTickets(routerId, payload);
+      } else {
+        res = await api.generateRouterTickets(routerId, payload);
+      }
+
       setTickets(res.tickets || []);
-      setSuccessMsg(`${res.count || count} tickets générés avec succès !`);
+      setSuccessMsg(
+        engineMode === "saas"
+          ? `${res.count || count} tickets SaaS Cloud RADIUS générés instantanément en base !`
+          : `${res.count || count} tickets générés sur RouterOS avec succès !`
+      );
     } catch (err: any) {
       setErrorMsg(err.message || "Erreur de génération des tickets");
     } finally {
@@ -186,43 +236,54 @@ export default function RouterTicketsPage({ params }: PageProps) {
           </p>
         </div>
 
-        {tickets.length > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleOpenRadiusModal}
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all cursor-pointer shadow-xs"
+          >
+            <Radio className="w-4 h-4 text-emerald-500" />
+            <span>Brancher RADIUS MikroTik (1-Clic)</span>
+          </button>
+
+          {tickets.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setPrintFormat("grid")}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    printFormat === "grid"
+                      ? "bg-white dark:bg-slate-900 text-blue-600 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  Planche A4 (4 Colonnes)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrintFormat("thermal")}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    printFormat === "thermal"
+                      ? "bg-white dark:bg-slate-900 text-blue-600 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  Rouleau Thermique POS
+                </button>
+              </div>
+
               <button
                 type="button"
-                onClick={() => setPrintFormat("grid")}
-                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                  printFormat === "grid"
-                    ? "bg-white dark:bg-slate-900 text-blue-600 shadow-xs"
-                    : "text-slate-600 dark:text-slate-400"
-                }`}
+                onClick={handlePrint}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer"
               >
-                Planche A4 (4 Colonnes)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrintFormat("thermal")}
-                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                  printFormat === "thermal"
-                    ? "bg-white dark:bg-slate-900 text-blue-600 shadow-xs"
-                    : "text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                Rouleau Thermique POS
+                <Printer className="w-4 h-4" />
+                <span>Imprimer ({tickets.length} tickets)</span>
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Imprimer ({tickets.length} tickets)</span>
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Generator Form */}
@@ -247,6 +308,60 @@ export default function RouterTicketsPage({ params }: PageProps) {
         )}
 
         <form onSubmit={handleGenerate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Sélecteur Moteur Cloud RADIUS vs RouterOS Local */}
+          <div className="sm:col-span-2 lg:col-span-3 space-y-1.5 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Moteur de Gestion des Tickets
+              </label>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> Moteur Cloud RADIUS actif
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEngineMode("saas")}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  engineMode === "saas"
+                    ? "border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-2 ring-emerald-600/20"
+                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${engineMode === "saas" ? "bg-emerald-600" : "bg-slate-400"}`} />
+                    Cloud RADIUS (Recommandé)
+                  </span>
+                  <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-black">
+                    Ultra-Rapide &lt; 50ms
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Tickets gérés sur le Cloud PostgreSQL. 0 charge CPU sur le routeur, roaming multi-antennes.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEngineMode("routeros")}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  engineMode === "routeros"
+                    ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 ring-2 ring-blue-600/20"
+                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${engineMode === "routeros" ? "bg-blue-600" : "bg-slate-400"}`} />
+                  Moteur Local RouterOS
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Écriture directe dans la mémoire Flash du MikroTik (/ip/hotspot/user).
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Mode d'authentification (1 champ vs 2 champs) */}
           <div className="sm:col-span-2 lg:col-span-3 space-y-1.5 border-b border-slate-100 dark:border-slate-800 pb-3">
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -435,14 +550,117 @@ export default function RouterTicketsPage({ params }: PageProps) {
             <button
               type="submit"
               disabled={loading}
-              className="py-2.5 px-6 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-xl shadow-md shadow-rose-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+              className={`py-2.5 px-6 text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                engineMode === "saas"
+                  ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                  : "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"
+              }`}
             >
               <Zap className="w-4 h-4" />
-              <span>{loading ? "Génération en cours sur RouterOS..." : `Générer le lot de ${count} Tickets`}</span>
+              <span>
+                {loading
+                  ? "Génération en cours..."
+                  : engineMode === "saas"
+                  ? `Générer ${count} Tickets Cloud RADIUS (Instantané)`
+                  : `Générer ${count} Tickets RouterOS`}
+              </span>
             </button>
           </div>
         </form>
       </div>
+
+      {/* Modal Configuration RADIUS MikroTik 1-Clic */}
+      {showRadiusModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs no-print">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border border-emerald-200 dark:border-emerald-800">
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Raccordement RADIUS MikroTik 1-Clic
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Copiez et collez ce script dans le Terminal WinBox / WebFig de votre routeur.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRadiusModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {radiusScriptLoading ? (
+              <div className="py-12 text-center text-xs text-slate-500">
+                Génération du script sur mesure en cours...
+              </div>
+            ) : radiusScriptData ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Serveur RADIUS TikZone</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                      {radiusScriptData.radius_server_ip}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Ports Auth / Accounting</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                      UDP {radiusScriptData.radius_auth_port} / {radiusScriptData.radius_acct_port}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <pre className="p-4 bg-slate-950 text-emerald-400 font-mono text-[11px] rounded-2xl overflow-x-auto max-h-64 border border-slate-800 leading-relaxed">
+                    {radiusScriptData.script}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={handleCopyRadiusScript}
+                    className="absolute top-3 right-3 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer border border-slate-700"
+                  >
+                    {copiedScript ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Copié !</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copier le script</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-xl text-xs text-blue-900 dark:text-blue-200 flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600 mt-0.5" />
+                  <span>
+                    Ce script active le client RADIUS interne de RouterOS, connecte le profil Hotspot au serveur et configure le décompte intermédiaire en temps réel toutes les 3 minutes.
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowRadiusModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tickets Printable Preview Area */}
       {tickets.length > 0 && (

@@ -230,3 +230,117 @@ class VpnCredential(models.Model):
                 f"/ip firewall filter add action=accept chain=input in-interface=tikzone-vpn comment=\"TikZone VPN API\" place-before=0"
             )
 
+
+class HotspotBatch(models.Model):
+    """Représente un lot d'émission de tickets Hotspot SaaS centralisé."""
+
+    class AuthMode(models.TextChoices):
+        SINGLE = "single", "Code unique / PIN (1 champ)"
+        DUAL = "dual", "Utilisateur & Mot de passe distincts (2 champs)"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    router = models.ForeignKey(Router, on_delete=models.CASCADE, related_name="hotspot_batches")
+    name = models.CharField("Nom ou Référence du Lot", max_length=120, blank=True)
+    profile_name = models.CharField("Nom du Profil", max_length=100, default="default")
+    auth_mode = models.CharField(
+        "Mode d'Authentification",
+        max_length=20,
+        choices=AuthMode.choices,
+        default=AuthMode.SINGLE,
+    )
+    code_length = models.PositiveSmallIntegerField("Longueur des codes", default=6)
+    time_limit = models.CharField("Limite de Durée", max_length=50, default="3h")
+    price = models.DecimalField("Prix Unitaire (FCFA)", max_digits=10, decimal_places=2, default=Decimal("100.00"))
+    count = models.PositiveIntegerField("Nombre de Tickets", default=1)
+    comment = models.CharField("Commentaire / Libellé", max_length=200, blank=True)
+    created_at = models.DateTimeField("Date de Génération", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Lot de Tickets Hotspot"
+        verbose_name_plural = "Lots de Tickets Hotspot"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Lot {self.name or self.id.hex[:8]} - {self.router.name} ({self.count} tickets)"
+
+
+class HotspotTicket(models.Model):
+    """Ticket Hotspot SaaS unitaire validé via le moteur RADIUS."""
+
+    class Status(models.TextChoices):
+        NEW = "NEW", "Disponible (Non utilisé)"
+        ACTIVE = "ACTIVE", "Actif (En cours d'utilisation)"
+        EXPIRED = "EXPIRED", "Expiré (Temps écoulé)"
+        REVOKED = "REVOKED", "Révoqué (Désactivé)"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    batch = models.ForeignKey(HotspotBatch, on_delete=models.CASCADE, related_name="tickets")
+    router = models.ForeignKey(Router, on_delete=models.CASCADE, related_name="hotspot_tickets")
+
+    code = models.CharField("Code Ticket / Identifiant", max_length=64, db_index=True)
+    password = models.CharField("Mot de Passe", max_length=64)
+    profile_name = models.CharField("Profil Associé", max_length=100, default="default")
+
+    status = models.CharField("Statut", max_length=20, choices=Status.choices, default=Status.NEW, db_index=True)
+    time_limit_seconds = models.PositiveIntegerField("Limite de Temps Totale (secondes)", default=10800)
+    uptime_used_seconds = models.PositiveIntegerField("Temps Déjà Consommé (secondes)", default=0)
+
+    price = models.DecimalField("Prix de Vente (FCFA)", max_digits=10, decimal_places=2, default=Decimal("100.00"))
+    comment = models.CharField("Commentaire", max_length=200, blank=True)
+
+    first_login_at = models.DateTimeField("Première Connexion", null=True, blank=True)
+    last_login_at = models.DateTimeField("Dernière Activité", null=True, blank=True)
+    expires_at = models.DateTimeField("Date d'Expiration Finale", null=True, blank=True)
+
+    mac_address = models.CharField("Adresse MAC Client", max_length=32, blank=True, default="")
+    ip_address = models.GenericIPAddressField("Dernière IP Assignée", null=True, blank=True)
+    bytes_in = models.BigIntegerField("Octets Téléchargés (Download)", default=0)
+    bytes_out = models.BigIntegerField("Octets Envoyés (Upload)", default=0)
+
+    created_at = models.DateTimeField("Date de Création", auto_now_add=True)
+    updated_at = models.DateTimeField("Dernière Mise à Jour", auto_now=True)
+
+    class Meta:
+        verbose_name = "Ticket Hotspot SaaS"
+        verbose_name_plural = "Tickets Hotspot SaaS"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["code", "status"]),
+            models.Index(fields=["router", "status"]),
+        ]
+
+    def __str__(self):
+        return f"Ticket {self.code} ({self.status})"
+
+    @property
+    def remaining_seconds(self) -> int:
+        if self.time_limit_seconds <= 0:
+            return 0
+        rem = self.time_limit_seconds - self.uptime_used_seconds
+        return max(0, rem)
+
+    @classmethod
+    def parse_time_limit_to_seconds(cls, time_str: str) -> int:
+        """Convertit '3h', '24h', '7d', '30m' en secondes."""
+        if not time_str:
+            return 3600
+        import re
+        total = 0
+        matches = re.findall(r"(\d+)\s*([dhms])", time_str.lower())
+        if not matches:
+            try:
+                return int(time_str) * 3600
+            except ValueError:
+                return 3600
+        for val, unit in matches:
+            num = int(val)
+            if unit == "d":
+                total += num * 86400
+            elif unit == "h":
+                total += num * 3600
+            elif unit == "m":
+                total += num * 60
+            elif unit == "s":
+                total += num
+        return total if total > 0 else 3600
+

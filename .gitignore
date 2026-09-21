@@ -67,6 +67,7 @@ graphify/
 graphify-out/
 graph_cache/
 *.graph.json
+graph.html
 graphify.config.*
 
 # Node / Frontend

@@ -275,6 +275,66 @@ export const api = {
     return result;
   },
 
+  // === MOTEUR SAAS RADIUS (HAUTE PERFORMANCE POSTGRESQL) ===
+  async getSaaSTickets(
+    routerId: string,
+    params?: { profile?: string; status?: string; search?: string }
+  ) {
+    const searchParams = new URLSearchParams();
+    if (params?.profile) searchParams.append("profile", params.profile);
+    if (params?.status) searchParams.append("status", params.status);
+    if (params?.search) searchParams.append("search", params.search);
+
+    const res = await fetch(`${API_BASE}/routers/${routerId}/saas-tickets/?${searchParams.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur de récupération des tickets SaaS RADIUS");
+    return await res.json();
+  },
+
+  async generateSaaSTickets(
+    routerId: string,
+    data: {
+      count: number;
+      auth_mode?: "single" | "dual";
+      profile?: string;
+      time_limit?: string;
+      prefix?: string;
+      code_length?: number;
+      code_format?: string;
+      price?: number;
+      comment?: string;
+    }
+  ) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/saas-tickets/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur de génération des tickets SaaS");
+    return result;
+  },
+
+  async deleteSaaSTickets(routerId: string, ticketIds: string[]) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/saas-tickets/`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ ticket_ids: ticketIds }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur de suppression des tickets SaaS");
+    return result;
+  },
+
+  async getRadiusSetupScript(routerId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/radius-script/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Erreur de génération du script RADIUS MikroTik");
+    return await res.json();
+  },
+
   async getRouterProfiles(routerId: string) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/`, {
       headers: getAuthHeaders(),

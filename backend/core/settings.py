@@ -194,3 +194,10 @@ VPN_SYNC_SECRET = config(
 )
 PRICE_MIKHMON_INSTANCE_FCFA = 1000
 PRICE_ROUTER_MONTHLY_FCFA = 500
+
+# Configuration RADIUS (Phase 2 - Moteur Haute Performance SaaS)
+RADIUS_SECRET = config("RADIUS_SECRET", default="tikzone-radius-secret-2026")
+RADIUS_SERVER_IP = config("RADIUS_SERVER_IP", default="172.29.88.1")
+RADIUS_AUTH_PORT = config("RADIUS_AUTH_PORT", default=1812, cast=int)
+RADIUS_ACCT_PORT = config("RADIUS_ACCT_PORT", default=1813, cast=int)
+
