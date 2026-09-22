@@ -178,12 +178,30 @@ class TestMikrootSaaSWorkflow:
         assert ticket_gen_resp.data["tickets"][0]["price"] == 300
         assert ticket_gen_resp.data["tickets"][0]["time_limit"] == "8h"
 
-        # 5. Vérification du rapport de ventes 100% PostgreSQL
+        # 5. Vérification du rapport financier : CA à 0 tant que les tickets ne sont pas activés
         sales_resp = self.client.get(f"/api/routers/{router_id}/reports/")
         assert sales_resp.status_code == 200
-        assert sales_resp.data["today_revenue"] == 1500  # 5 tickets * 300 FCFA
-        assert sales_resp.data["today_count"] == 5
-        assert len(sales_resp.data["sales_history"]) == 5
+        assert sales_resp.data["today_revenue"] == 0  # Aucun ticket activé = 0 FCFA
+        assert sales_resp.data["today_count"] == 0
+        assert sales_resp.data["total_generated_tickets"] == 5
+
+        # 6. Activation d'un ticket : le CA passe immédiatement à 300 FCFA
+        from apps.routers.models import HotspotTicket
+        from django.utils import timezone
+        ticket = HotspotTicket.objects.filter(router_id=router_id).first()
+        ticket.status = HotspotTicket.Status.ACTIVE
+        ticket.first_login_at = timezone.now()
+        ticket.save()
+
+        sales_active_resp = self.client.get(f"/api/routers/{router_id}/reports/")
+        assert sales_active_resp.status_code == 200
+        assert sales_active_resp.data["today_revenue"] == 300  # 1 ticket activé
+        assert sales_active_resp.data["today_count"] == 1
+
+        # 7. Test de Réinitialisation / Purge complète de la caisse
+        reset_resp = self.client.delete(f"/api/routers/{router_id}/reports/")
+        assert reset_resp.status_code == 200
+        assert HotspotTicket.objects.filter(router_id=router_id).count() == 0
 
     def test_ticket_continuous_calendar_validity(self):
         """Vérifie que le compte à rebours calendaire absolu (expires_at) empêche le partage différé."""

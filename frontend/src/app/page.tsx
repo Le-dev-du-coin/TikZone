@@ -57,7 +57,7 @@ export default function LandingPage() {
 
               <Link
                 href="/login"
-                className="hidden sm:inline-flex px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-xl transition-colors"
+                className="px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
               >
                 Connexion
               </Link>
@@ -84,7 +84,7 @@ export default function LandingPage() {
 
           {/* Main Title */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-950 tracking-tight max-w-4xl mx-auto leading-[1.12]">
-            La puissance du <span className="text-blue-600">Cloud</span> pour vos Hotspots MikroTik.
+            La puissance du <span className="text-blue-600">Cloud</span> pour vos <span className="text-blue-600">Hotspots</span> <span className="text-blue-600">MikroTik</span>.
           </h1>
 
           {/* Subtitle */}
@@ -418,27 +418,41 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-10 border-t border-slate-200 bg-white text-slate-500 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+      <footer className="py-12 pb-28 sm:pb-14 border-t border-slate-200 bg-white text-slate-500 text-xs">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center text-center space-y-4">
+          {/* Logo & Droits */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">
               <Wifi className="w-3.5 h-3.5" />
             </div>
             <span className="font-bold text-slate-900">TikZone Cloud SaaS</span>
-            <span>• {appVersion} • © 2026 Tous droits réservés.</span>
+            <span className="text-slate-400">•</span>
+            <span>{appVersion}</span>
+            <span className="text-slate-400">•</span>
+            <span>© 2026 Tous droits réservés.</span>
           </div>
 
-          <div className="flex items-center gap-6">
+          {/* Support WhatsApp */}
+          <div>
             <a
               href="https://wa.me/22399281899?text=Bonjour%20TikZone%2C%20j%27ai%20besoin%20d%27assistance"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-600 font-bold hover:underline"
+              className="inline-flex items-center gap-1.5 text-emerald-600 font-extrabold hover:underline bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200"
             >
-              Support WhatsApp : +223 99 28 18 99
+              <span>Support WhatsApp : +223 99 28 18 99</span>
             </a>
+          </div>
+
+          {/* Navigation secondaire */}
+          <div className="flex items-center justify-center gap-6 text-slate-600 font-medium pt-1">
             <Link href="/login" className="hover:text-blue-600 transition-colors">Connexion</Link>
+            <span>•</span>
             <Link href="/register" className="hover:text-blue-600 transition-colors">Inscription</Link>
+            <span>•</span>
+            <a href="#features" className="hover:text-blue-600 transition-colors">Fonctionnalités</a>
+            <span>•</span>
+            <a href="#pricing" className="hover:text-blue-600 transition-colors">Tarifs</a>
           </div>
         </div>
       </footer>

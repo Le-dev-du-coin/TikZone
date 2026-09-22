@@ -741,9 +741,9 @@ class RouterHotspotProfilesView(APIView):
 
 
 def get_saas_sales_report_data(router):
-    """Calcule le rapport financier Hotspot (CA jour, hier, mois, tickets) 100% PostgreSQL."""
+    """Calcule le rapport financier Hotspot (CA encaissé, tickets actifs/expirés) 100% base Cloud."""
     from .models import HotspotTicket
-    from django.db.models import Sum
+    from django.db.models import Q, Sum
     from django.utils import timezone
     import datetime
 
@@ -753,9 +753,14 @@ def get_saas_sales_report_data(router):
 
     qs = HotspotTicket.objects.filter(router=router).select_related("batch")
 
-    today_qs = qs.filter(created_at__date=today)
-    yesterday_qs = qs.filter(created_at__date=yesterday)
-    month_qs = qs.filter(created_at__year=now.year, created_at__month=now.month)
+    # Seuls les tickets activés ou consommés par les clients constituent des ventes encaissées
+    sold_filter = Q(status__in=[HotspotTicket.Status.ACTIVE, HotspotTicket.Status.EXPIRED]) | Q(first_login_at__isnull=False)
+    sold_qs = qs.filter(sold_filter)
+
+    # Date de vente basée sur first_login_at (ou fallback sur created_at pour tickets actifs)
+    today_qs = sold_qs.filter(Q(first_login_at__date=today) | (Q(first_login_at__isnull=True) & Q(created_at__date=today)))
+    yesterday_qs = sold_qs.filter(first_login_at__date=yesterday)
+    month_qs = sold_qs.filter(Q(first_login_at__year=now.year, first_login_at__month=now.month) | (Q(first_login_at__isnull=True) & Q(created_at__year=now.year, created_at__month=now.month)))
 
     today_revenue = int(today_qs.aggregate(s=Sum("price"))["s"] or 0)
     today_count = today_qs.count()
@@ -766,10 +771,10 @@ def get_saas_sales_report_data(router):
     month_revenue = int(month_qs.aggregate(s=Sum("price"))["s"] or 0)
     month_count = month_qs.count()
 
-    total_revenue = int(qs.aggregate(s=Sum("price"))["s"] or 0)
-    total_count = qs.count()
+    total_revenue = int(sold_qs.aggregate(s=Sum("price"))["s"] or 0)
+    total_count = sold_qs.count()
 
-    recent_tickets = qs.order_by("-created_at")[:60]
+    recent_tickets = qs.order_by("-created_at")[:100]
     sales_history = [
         {
             "id": str(t.id),
@@ -777,9 +782,10 @@ def get_saas_sales_report_data(router):
             "profile": t.profile_name,
             "price": int(t.price),
             "batch_id": t.batch.name if t.batch and t.batch.name else "Vente Directe",
-            "date": t.created_at.strftime("%Y-%m-%d"),
-            "time": t.created_at.strftime("%H:%M"),
+            "date": (t.first_login_at or t.created_at).strftime("%Y-%m-%d"),
+            "time": (t.first_login_at or t.created_at).strftime("%H:%M"),
             "status": t.status,
+            "consumed": t.status in [HotspotTicket.Status.ACTIVE, HotspotTicket.Status.EXPIRED] or t.first_login_at is not None,
         }
         for t in recent_tickets
     ]
@@ -793,12 +799,13 @@ def get_saas_sales_report_data(router):
         "month_count": month_count,
         "total_revenue": total_revenue,
         "total_count": total_count,
+        "total_generated_tickets": qs.count(),
         "sales_history": sales_history,
     }
 
 
 class RouterSalesReportView(APIView):
-    """Rapport de ventes Hotspot (CA jour, hier, mois, historique tickets) 100% PostgreSQL."""
+    """Rapport de ventes Hotspot et réinitialisation de la caisse/tickets."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, router_id):
@@ -811,6 +818,42 @@ class RouterSalesReportView(APIView):
 
         data = get_saas_sales_report_data(router)
         return Response(data)
+
+    def delete(self, request, router_id):
+        """Purger tous les tickets et réinitialiser l'historique financier à zéro."""
+        from .models import HotspotBatch, HotspotTicket
+        try:
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        deleted_tickets = HotspotTicket.objects.filter(router=router).delete()[0]
+        deleted_batches = HotspotBatch.objects.filter(router=router).delete()[0]
+
+        # Nettoyage optionnel des vieux utilisateurs sur le MikroTik si en ligne
+        try:
+            from .services.mikrotik import MikrotikService
+            pool = MikrotikService.get_api_connection(router, timeout=2.5)
+            api = pool.get_api()
+            ros_users = api.get_resource("/ip/hotspot/user").get()
+            u_res = api.get_resource("/ip/hotspot/user")
+            for u in ros_users:
+                if u.get("name") not in ["default-trial"]:
+                    try:
+                        u_res.remove(id=u.get("id"))
+                    except Exception:
+                        pass
+            pool.disconnect()
+        except Exception:
+            pass
+
+        return Response({
+            "detail": "Historique financier et tickets réinitialisés avec succès.",
+            "deleted_tickets": deleted_tickets,
+            "deleted_batches": deleted_batches,
+        })
 
 
 class RouterSalesReportPdfView(APIView):

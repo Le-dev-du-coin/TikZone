@@ -423,6 +423,16 @@ export const api = {
     return await res.json();
   },
 
+  async resetRouterSalesReport(routerId: string) {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/reports/`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "Erreur de réinitialisation des rapports");
+    return result;
+  },
+
   async downloadSalesReportPdf(routerId: string, routerName = "routeur") {
     const res = await fetch(`${API_BASE}/routers/${routerId}/reports/pdf/`, {
       headers: getAuthHeaders(),

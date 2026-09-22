@@ -91,23 +91,18 @@ export default function RouterUsersPage({ params }: PageProps) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersRes, saasRes, profRes] = await Promise.all([
-        api.getRouterHotspotUsers(routerId, 500).catch(() => ({ results: [] })),
+      // 100% Cloud Hotspot Natif : seuls les tickets Cloud sont gérés
+      const [saasRes, profRes] = await Promise.all([
         api.getSaaSTickets(routerId).catch(() => ({ results: [] })),
         api.getRouterProfiles(routerId).catch(() => ({ results: [] })),
       ]);
-
-      const parsedRouterUsers = (usersRes.results || []).map((u: any) => ({
-        ...u,
-        source: "routeros",
-      }));
 
       const parsedSaaSTickets = (saasRes.results || []).map((t: any) => ({
         id: t.id,
         name: t.code,
         password: t.password,
-        profile: t.profile,
-        comment: t.comment || "Ticket Cloud RADIUS",
+        profile: t.profile || "default",
+        comment: t.comment || "Ticket Cloud Hotspot",
         uptime: t.uptime_used_seconds ? `${Math.floor(t.uptime_used_seconds / 60)}m` : "0s",
         bytes_in: t.bytes_in,
         bytes_out: t.bytes_out,
@@ -117,14 +112,13 @@ export default function RouterUsersPage({ params }: PageProps) {
         time_limit: t.time_limit,
       }));
 
-      const combinedUsers = [...parsedSaaSTickets, ...parsedRouterUsers];
       const parsedProfiles = profRes.results || [];
 
-      setUsers(combinedUsers);
+      setUsers(parsedSaaSTickets);
       setProfiles(parsedProfiles);
 
       try {
-        localStorage.setItem(`tikzone_cached_users_${routerId}`, JSON.stringify(combinedUsers));
+        localStorage.setItem(`tikzone_cached_users_${routerId}`, JSON.stringify(parsedSaaSTickets));
         localStorage.setItem(`tikzone_cached_profiles_${routerId}`, JSON.stringify(parsedProfiles));
       } catch {}
     } catch (err) {
@@ -138,19 +132,21 @@ export default function RouterUsersPage({ params }: PageProps) {
     loadData();
   }, [routerId]);
 
-  // Décompte des tickets par profil
+  // Décompte des tickets par profil (insensible à la casse)
   const profileCounts: Record<string, number> = {};
   users.forEach((u) => {
-    const prof = u.profile || "default";
-    profileCounts[prof] = (profileCounts[prof] || 0) + 1;
+    const profKey = (u.profile || "default").trim().toLowerCase();
+    profileCounts[profKey] = (profileCounts[profKey] || 0) + 1;
   });
 
-  // Filtrage des tickets pour la vue tableau
+  // Filtrage des tickets pour la vue tableau (insensible à la casse)
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
       (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
       (u.comment && u.comment.toLowerCase().includes(search.toLowerCase()));
-    const matchesProfile = selectedProfile === "ALL" || u.profile === selectedProfile;
+    const matchesProfile =
+      selectedProfile === "ALL" ||
+      (u.profile || "").trim().toLowerCase() === selectedProfile.trim().toLowerCase();
     return matchesSearch && matchesProfile;
   });
 
@@ -407,7 +403,8 @@ export default function RouterUsersPage({ params }: PageProps) {
             {/* Cartes par Profil individuel */}
             {profiles.map((p, idx) => {
               const palette = CARD_PALETTES[(idx + 1) % CARD_PALETTES.length];
-              const count = profileCounts[p.name] || 0;
+              const pKey = (p.name || "default").trim().toLowerCase();
+              const count = profileCounts[pKey] || 0;
 
               return (
                 <div
