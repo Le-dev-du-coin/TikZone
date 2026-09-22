@@ -325,9 +325,9 @@ function NewRouterForm() {
           <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto font-bold">
             <Layers className="w-6 h-6" />
           </div>
-          <h3 className="font-bold text-slate-900 dark:text-white">Aucun espace Mikhmon disponible</h3>
+          <h3 className="font-bold text-slate-900 dark:text-white">Aucun Espace TikZone disponible</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Vous devez d'abord créer un espace Mikhmon avant de pouvoir y relier un routeur MikroTik.
+            Vous devez d'abord créer un Espace TikZone avant de pouvoir y relier un routeur MikroTik.
           </p>
           <div className="pt-2">
             <Link
@@ -335,7 +335,7 @@ function NewRouterForm() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
             >
               <Plus className="w-4 h-4" />
-              <span>Acheter un Espace Mikhmon (1 000 CFA)</span>
+              <span>Acheter un Espace TikZone (1 000 CFA)</span>
             </Link>
           </div>
         </div>

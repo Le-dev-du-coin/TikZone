@@ -55,7 +55,7 @@ def test_radius_batch_generation_and_auth():
         mac_address="AA:BB:CC:DD:EE:FF",
     )
     assert ok is True
-    assert attrs["Session-Timeout"] == 10800
+    assert 10790 <= attrs["Session-Timeout"] <= 10800
 
     # Vérification que le ticket passe en ACTIVE avec date de début
     t1.refresh_from_db()

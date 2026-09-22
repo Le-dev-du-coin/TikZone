@@ -17,7 +17,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--secret",
             type=str,
-            default=getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret"),
+            default=getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret-2026"),
             help="Secret partagé RADIUS",
         )
 

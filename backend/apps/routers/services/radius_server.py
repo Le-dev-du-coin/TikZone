@@ -66,7 +66,7 @@ def build_radius_response(
 class RadiusAuthProtocol(asyncio.DatagramProtocol):
     """Serveur UDP pour l'authentification RADIUS (Port 1812)."""
 
-    def __init__(self, secret: str = "tikzone-radius-secret"):
+    def __init__(self, secret: str = "tikzone-radius-secret-2026"):
         self.secret = secret.encode("ascii")
         self.transport = None
 
@@ -143,7 +143,7 @@ class RadiusAuthProtocol(asyncio.DatagramProtocol):
 class RadiusAcctProtocol(asyncio.DatagramProtocol):
     """Serveur UDP pour l'Accounting RADIUS (Port 1813)."""
 
-    def __init__(self, secret: str = "tikzone-radius-secret"):
+    def __init__(self, secret: str = "tikzone-radius-secret-2026"):
         self.secret = secret.encode("ascii")
         self.transport = None
 
@@ -168,34 +168,24 @@ class RadiusAcctProtocol(asyncio.DatagramProtocol):
 
         username = attrs.get(ATTR_USER_NAME, [b""])[0].decode("utf-8", errors="ignore")
 
-        status_type = 0
-        if ATTR_ACCT_STATUS_TYPE in attrs:
-            val = attrs[ATTR_ACCT_STATUS_TYPE][0]
-            if len(val) == 4:
-                status_type = struct.unpack("!I", val)[0]
+        # Statut de la session
+        status_raw = attrs.get(ATTR_ACCT_STATUS_TYPE, [b"\x00\x00\x00\x00"])[0]
+        status_type = struct.unpack("!I", status_raw)[0] if len(status_raw) == 4 else 0
 
-        session_time = 0
-        if ATTR_ACCT_SESSION_TIME in attrs:
-            val = attrs[ATTR_ACCT_SESSION_TIME][0]
-            if len(val) == 4:
-                session_time = struct.unpack("!I", val)[0]
+        # Données de consommation
+        time_raw = attrs.get(ATTR_ACCT_SESSION_TIME, [b"\x00\x00\x00\x00"])[0]
+        session_time = struct.unpack("!I", time_raw)[0] if len(time_raw) == 4 else 0
 
-        in_octets = 0
-        if ATTR_ACCT_INPUT_OCTETS in attrs:
-            val = attrs[ATTR_ACCT_INPUT_OCTETS][0]
-            if len(val) == 4:
-                in_octets = struct.unpack("!I", val)[0]
+        in_raw = attrs.get(ATTR_ACCT_INPUT_OCTETS, [b"\x00\x00\x00\x00"])[0]
+        in_octets = struct.unpack("!I", in_raw)[0] if len(in_raw) == 4 else 0
 
-        out_octets = 0
-        if ATTR_ACCT_OUTPUT_OCTETS in attrs:
-            val = attrs[ATTR_ACCT_OUTPUT_OCTETS][0]
-            if len(val) == 4:
-                out_octets = struct.unpack("!I", val)[0]
+        out_raw = attrs.get(ATTR_ACCT_OUTPUT_OCTETS, [b"\x00\x00\x00\x00"])[0]
+        out_octets = struct.unpack("!I", out_raw)[0] if len(out_raw) == 4 else 0
 
         calling_station = attrs.get(ATTR_CALLING_STATION_ID, [b""])[0]
         mac_address = calling_station.decode("ascii", errors="ignore")
 
-        # Mise à jour en tâche de fond
+        # Mise à jour en base de données
         await sync_to_async(RadiusEngineService.accounting)(
             username=username,
             status_type=status_type,
@@ -218,7 +208,7 @@ class RadiusAcctProtocol(asyncio.DatagramProtocol):
             self.transport.sendto(response_packet, addr)
 
 
-async def start_radius_services(host: str = "0.0.0.0", auth_port: int = 1812, acct_port: int = 1813, secret: str = "tikzone-radius-secret"):
+async def start_radius_services(host: str = "0.0.0.0", auth_port: int = 1812, acct_port: int = 1813, secret: str = "tikzone-radius-secret-2026"):
     """Lance les serveurs UDP d'authentification et d'accounting."""
     loop = asyncio.get_running_loop()
 

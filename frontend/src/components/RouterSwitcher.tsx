@@ -47,6 +47,13 @@ export default function RouterSwitcher({ currentRouterId }: RouterSwitcherProps)
   }, []);
 
   const currentRouter = routers.find((r) => r.id === currentRouterId);
+  const currentSpaceId = currentRouter?.mikhmon_instance;
+  const currentSpaceName = currentRouter?.mikhmon_name;
+
+  // Filtrer STRICTEMENT les routeurs appartenant au même Espace TikZone
+  const spaceRouters = currentSpaceId
+    ? routers.filter((r) => r.mikhmon_instance === currentSpaceId)
+    : routers;
 
   return (
     <div className="relative inline-block text-left">
@@ -67,12 +74,17 @@ export default function RouterSwitcher({ currentRouterId }: RouterSwitcherProps)
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
           <div className="absolute left-0 mt-2 w-72 origin-top-left rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 p-2 space-y-1">
-            <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Changer d'Espace Routeur
+            <div className="px-3 py-1.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 truncate max-w-[170px]">
+                {currentSpaceName ? `Espace : ${currentSpaceName}` : "Routeurs de cet Espace"}
+              </span>
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                {spaceRouters.length} routeur(s)
+              </span>
             </div>
 
             <div className="max-h-60 overflow-y-auto space-y-1">
-              {routers.map((r) => {
+              {spaceRouters.map((r) => {
                 const isSelected = r.id === currentRouterId;
                 return (
                   <button
@@ -106,20 +118,33 @@ export default function RouterSwitcher({ currentRouterId }: RouterSwitcherProps)
               })}
             </div>
 
-            {user?.role !== "CLIENT_MANAGER" && (
-              <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  router.push("/dashboard");
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+              >
+                <span>Changer d'Espace TikZone</span>
+                <span className="text-[10px] text-slate-400">Dashboard ➔</span>
+              </button>
+
+              {user?.role !== "CLIENT_MANAGER" && (
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
-                    router.push("/dashboard/routers/new");
+                    router.push(currentSpaceId ? `/dashboard/routers/new?space=${currentSpaceId}` : "/dashboard/routers/new");
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-xl transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Rattacher un autre routeur</span>
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </>
       )}

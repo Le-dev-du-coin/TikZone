@@ -78,7 +78,7 @@ export default function DashboardNewMikhmonPage() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">Acheter un Espace Mikhmon</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">Acheter un Espace TikZone</h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Créez un nouvel espace cloud indépendant avec son sous-domaine dédié.
           </p>

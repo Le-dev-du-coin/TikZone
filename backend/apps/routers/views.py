@@ -1115,7 +1115,7 @@ class RouterRadiusSetupScriptView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        secret = getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret")
+        secret = getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret-2026")
         script = RadiusEngineService.generate_mikrotik_radius_setup_script(router, secret=secret)
         return Response({
             "router_id": str(router.id),

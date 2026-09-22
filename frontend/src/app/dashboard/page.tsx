@@ -787,7 +787,7 @@ export default function ClientDashboardPage() {
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               {deleteTarget.type === "SPACE" ? (
                 <>
-                  Êtes-vous sûr de vouloir supprimer l'espace Mikhmon <strong>{deleteTarget.name}</strong> ?
+                  Êtes-vous sûr de vouloir supprimer l'Espace TikZone <strong>{deleteTarget.name}</strong> ?
                   {deleteTarget.routersCount && deleteTarget.routersCount > 0 ? (
                     <span className="block mt-2 font-bold text-rose-600 dark:text-rose-400">
                       ⚠️ Attention : Cet espace contient {deleteTarget.routersCount} routeur(s). Vous devez supprimer ses routeurs avant de pouvoir supprimer l'espace.

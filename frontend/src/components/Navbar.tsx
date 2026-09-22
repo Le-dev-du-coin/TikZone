@@ -50,7 +50,7 @@ export default function Navbar({ balance = 500 }: { balance?: number }) {
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
             >
               <PlusCircle className="w-4 h-4" />
-              Acheter Mikhmon
+              Acheter Espace TikZone
             </Link>
 
             <Link
