@@ -342,6 +342,13 @@ class HotspotTicket(models.Model):
         if self.time_limit_seconds <= 0:
             return 0
         rem = self.time_limit_seconds - self.uptime_used_seconds
+        # Validité calendaire continue absolue : le compte à rebours expire irrévocablement à expires_at
+        if self.expires_at:
+            now = timezone.now()
+            if now >= self.expires_at:
+                return 0
+            time_until_expiry = int((self.expires_at - now).total_seconds())
+            return max(0, min(rem, time_until_expiry))
         return max(0, rem)
 
     @classmethod

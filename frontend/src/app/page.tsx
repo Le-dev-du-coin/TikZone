@@ -77,19 +77,19 @@ export default function LandingPage() {
       <section className="relative pt-16 pb-20 overflow-hidden bg-gradient-to-b from-blue-50/40 via-white to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-7">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-            <span>Moteur Cloud Haute Performance • Compatible RouterOS 7.21+</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+            <span>Architecture 100% Cloud Hotspot • Zéro usure de mémoire MikroTik</span>
           </div>
 
           {/* Main Title */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-950 tracking-tight max-w-4xl mx-auto leading-[1.12]">
-            Gérez vos Hotspots <span className="text-blue-600">MikroTik</span> à distance sans IP publique.
+            La puissance du <span className="text-blue-600">Cloud</span> pour vos Hotspots MikroTik.
           </h1>
 
           {/* Subtitle */}
           <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            La solution cloud conçue pour les <strong>propriétaires de WiFi Zone</strong> et les <strong>techniciens réseaux</strong>. Générez vos coupons de connexion, suivez vos ventes et pilotez vos routeurs depuis votre smartphone.
+            Fini la mémoire Flash saturée et les scripts bloqués. TikZone centralise vos <strong>tickets, forfaits, sessions actives et chiffres d'affaires</strong> dans notre base Cloud. Même si vous formatez, réinitialisez ou remplacez votre MikroTik, <strong>aucune donnée n'est perdue</strong>.
           </p>
 
           {/* CTA Buttons */}
@@ -98,111 +98,130 @@ export default function LandingPage() {
               href="/register"
               className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-blue-600/25 transition-all flex items-center justify-center gap-2"
             >
-              <span>Créer mon compte</span>
+              <span>Créer mon compte Cloud</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <a
               href="#comparison"
               className="w-full sm:w-auto px-6 py-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm sm:text-base rounded-2xl transition-all shadow-xs"
             >
-              Pourquoi RouterOS 7 ?
+              Découvrir les avantages du Cloud
             </a>
           </div>
 
           {/* KPI Mini Bar */}
           <div className="pt-10 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
             <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-              <div className="text-2xl font-black text-slate-900">99.9%</div>
-              <div className="text-xs text-slate-500 mt-0.5">Disponibilité VPN</div>
+              <div className="text-2xl font-black text-emerald-600">&lt; 30 ms</div>
+              <div className="text-xs text-slate-500 mt-0.5">Validation des tickets</div>
             </div>
             <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-              <div className="text-2xl font-black text-blue-600">0 IP Fixe</div>
-              <div className="text-xs text-slate-500 mt-0.5">Bypasse 4G & CGNAT</div>
+              <div className="text-2xl font-black text-blue-600">0% CPU</div>
+              <div className="text-xs text-slate-500 mt-0.5">Soulage votre MikroTik</div>
             </div>
             <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-              <div className="text-2xl font-black text-emerald-600">&lt; 30 sec</div>
-              <div className="text-xs text-slate-500 mt-0.5">Génération de 500 tickets</div>
+              <div className="text-2xl font-black text-indigo-600">1 000+</div>
+              <div className="text-xs text-slate-500 mt-0.5">Tickets émis en 1 seconde</div>
             </div>
             <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-              <div className="text-2xl font-black text-indigo-600">ROS v6 & v7</div>
-              <div className="text-xs text-slate-500 mt-0.5">Support MikroTik total</div>
+              <div className="text-2xl font-black text-slate-900">100% FCFA</div>
+              <div className="text-xs text-slate-500 mt-0.5">Comptabilité exacte en base</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Comparison: Why Legacy Fails vs Mikroot */}
+      {/* Comparison: Local Storage vs Cloud Native */}
       <section id="comparison" className="py-16 bg-slate-50 border-y border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           <div className="text-center space-y-2 max-w-3xl mx-auto">
             <span className="text-xs font-bold uppercase tracking-widest text-blue-600">
-              Modernité & Stabilité
+              Révolution Cloud Hotspot
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Pourquoi l'ancienne version ne fonctionne plus ?
+              Pourquoi abandonner le stockage local sur MikroTik ?
             </h2>
             <p className="text-xs sm:text-sm text-slate-600">
-              Depuis les mises à jour MikroTik RouterOS 7.10 et supérieures, l'ancien système rencontre des pannes de scripts et des échecs d'API constants.
+              Stocker des milliers de tickets directement dans la mémoire flash d'un MikroTik ralentit l'appareil, provoque des blocages lors des mises à jour et fausse votre comptabilité.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Legacy */}
+            {/* Legacy Local Mode */}
             <div className="p-6 sm:p-8 rounded-3xl bg-white border border-rose-200 shadow-xs space-y-4">
               <div className="flex items-center gap-3 text-rose-600">
                 <div className="p-2.5 rounded-2xl bg-rose-50 border border-rose-100">
                   <ShieldAlert className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900">Ancienne Version (PHP Legacy)</h3>
-                  <p className="text-xs text-rose-600">Problèmes fréquents avec les mises à jour</p>
+                  <h3 className="font-bold text-base text-slate-900">Ancien Mode Local (Sur MikroTik)</h3>
+                  <p className="text-xs text-rose-600">Vulnérable et limité</p>
                 </div>
               </div>
 
               <ul className="space-y-3 text-xs sm:text-sm text-slate-600">
                 <li className="flex items-start gap-2.5">
                   <span className="text-rose-500 font-bold">✕</span>
-                  <span><strong>Rapports de ventes bloqués</strong> : Les syntaxes de scripts modifiées sur ROS 7 bloquent l'historique de ventes.</span>
+                  <span><strong>Saturation de la mémoire Flash</strong> : Les MikroTik d'entrée de gamme (hAP lite, hEX) plantent quand ils ont trop d'utilisateurs.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-rose-500 font-bold">✕</span>
-                  <span><strong>Échecs de connexion API</strong> : L'API non chiffrée est rejetée par les versions récentes de RouterOS.</span>
+                  <span><strong>Bugs d'adresses MAC aléatoires</strong> : Les iPhones (iOS) et smartphones Android récents changent d'adresse MAC privée, provoquant déconnexions et tickets bloqués.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-rose-500 font-bold">✕</span>
-                  <span><strong>Interface non mobile</strong> : Difficultés d'impression et de gestion depuis un smartphone.</span>
+                  <span><strong>Perte de l'historique de ventes</strong> : En cas de coupure de courant, de reboot ou de reset, tous les tickets et compteurs peuvent être effacés.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-rose-500 font-bold">✕</span>
+                  <span><strong>Pas de roaming multi-bornes</strong> : Un ticket créé sur une borne ne fonctionne pas sur vos autres antennes.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-rose-500 font-bold">✕</span>
+                  <span><strong>Génération lente</strong> : Créer 200 tickets fige le processeur du routeur pendant de longues secondes.</span>
                 </li>
               </ul>
             </div>
 
-            {/* Mikroot Cloud */}
-            <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/80 border-2 border-blue-500/50 shadow-md space-y-4 relative">
-              <div className="absolute top-4 right-4 px-2.5 py-0.5 bg-blue-600 text-white text-[10px] font-extrabold rounded-full">
-                RECOMMANDÉ
+            {/* TikZone Cloud Engine */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-emerald-50/80 via-white to-blue-50/80 border-2 border-emerald-500/50 shadow-md space-y-4 relative">
+              <div className="absolute top-4 right-4 px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full">
+                ARCHITECTURE MODERNE
               </div>
-              <div className="flex items-center gap-3 text-blue-600">
-                <div className="p-2.5 rounded-2xl bg-blue-100/70 border border-blue-200">
-                  <ShieldCheck className="w-6 h-6 text-blue-700" />
+              <div className="flex items-center gap-3 text-emerald-600">
+                <div className="p-2.5 rounded-2xl bg-emerald-100/70 border border-emerald-200">
+                  <ShieldCheck className="w-6 h-6 text-emerald-700" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900">TikZone Cloud Engine</h3>
-                  <p className="text-xs text-blue-700">100% Natif RouterOS 7.21+</p>
+                  <h3 className="font-bold text-base text-slate-900">TikZone 100% Cloud Native</h3>
+                  <p className="text-xs text-emerald-700">Centralisé, Sécurisé & Évolutif</p>
                 </div>
-
               </div>
 
               <ul className="space-y-3 text-xs sm:text-sm text-slate-700">
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Connexion API Moderne & Résiliente</strong> : Support natif des protocoles récents sans erreur.</span>
+                  <span><strong>Zéro charge sur le MikroTik</strong> : Les tickets et forfaits sont stockés dans notre base cloud sécurisée. Votre routeur ne sert que de passerelle d'accès.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Tunneling VPN Automatisé</strong> : Connexion transparente de vos routeurs 4G/Fibre sans configuration complexe.</span>
+                  <span><strong>Compatible Adresses MAC Privées (iOS & Android)</strong> : Zéro déconnexion intempestive. Même si le smartphone change d'adresse MAC aléatoire, le forfait reste valide sans rejet.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Expérience 100% Mobile-First</strong> : Interface réactive, fluide et agréable au quotidien.</span>
+                  <span><strong>Insensible au formatage & pannes</strong> : Votre MikroTik peut être réinitialisé à zéro, formaté ou remplacé par un neuf : <strong>vous ne perdez rien</strong>. Toutes vos données restent protégées dans notre base.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>Comptabilité FCFA infaillible</strong> : Suivez votre CA journalier, mensuel et téléchargez vos rapports financiers PDF vectoriels basés sur les ventes réelles.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>Multi-Antennes & Roaming instantané</strong> : Vos clients utilisent le même ticket sur toutes vos bornes Wi-Fi sans aucune reconnexion manuelle.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>Raccordement 1-Clic</strong> : Une seule ligne de commande dans votre New Terminal suffit pour reconnecter votre matériel à tout moment.</span>
                 </li>
               </ul>
             </div>

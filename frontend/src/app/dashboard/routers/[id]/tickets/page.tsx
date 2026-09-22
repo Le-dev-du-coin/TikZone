@@ -241,16 +241,6 @@ export default function RouterTicketsPage({ params }: PageProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleOpenRadiusModal}
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 font-bold text-xs rounded-xl border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer shadow-xs"
-            title="Afficher le script pour brancher ce MikroTik au serveur Cloud RADIUS"
-          >
-            <Radio className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Script RADIUS MikroTik (1-Clic)</span>
-          </button>
-
           {tickets.length > 0 && (
             <button
               type="button"
@@ -293,7 +283,7 @@ export default function RouterTicketsPage({ params }: PageProps) {
                 Mode d'authentification au portail Wi-Fi
               </label>
               <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> Moteur Cloud RADIUS Haute Performance (PostgreSQL)
+                <ShieldCheck className="w-3.5 h-3.5" /> Moteur Cloud RADIUS Haute Performance (Base Cloud)
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -382,7 +372,7 @@ export default function RouterTicketsPage({ params }: PageProps) {
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              Génération instantanée en base PostgreSQL.
+              Génération instantanée dans notre base Cloud.
             </p>
           </div>
 

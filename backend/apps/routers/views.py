@@ -364,11 +364,14 @@ class RouterSystemInfoView(APIView):
 
 
 class RouterHotspotOverviewView(APIView):
-    """Récupère les KPIs Hotspot (actifs, utilisateurs, profils) pour l'espace dédié."""
+    """
+    Récupère les KPIs Hotspot (actifs, utilisateurs totaux, profils)
+    directement depuis la base de données PostgreSQL Cloud.
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, router_id):
-        from .services.mikrotik import MikrotikService
+        from .models import CloudHotspotProfile, HotspotTicket
         try:
             router = get_user_router_or_404(
                 request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
@@ -376,8 +379,66 @@ class RouterHotspotOverviewView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        overview = MikrotikService.get_hotspot_overview(router)
-        return Response(overview)
+        total_users_count = HotspotTicket.objects.filter(router=router).count()
+        profiles_count = CloudHotspotProfile.objects.filter(router=router, is_active=True).count()
+
+        # Sessions actives en base
+        active_tickets = HotspotTicket.objects.filter(
+            router=router, status=HotspotTicket.Status.ACTIVE
+        ).select_related("batch")[:100]
+
+        active_count = HotspotTicket.objects.filter(
+            router=router, status=HotspotTicket.Status.ACTIVE
+        ).count()
+
+        active_list = [
+            {
+                "id": str(t.id),
+                "user": t.code,
+                "profile": t.profile_name,
+                "price": f"{int(t.price)} FCFA",
+                "limit_uptime": t.batch.time_limit if t.batch else "1h",
+                "address": str(t.ip_address or "-"),
+                "mac_address": t.mac_address or "-",
+                "uptime": f"{t.uptime_used_seconds // 60}m",
+                "session_time_left": f"{t.remaining_seconds // 60}m" if t.remaining_seconds > 0 else "Expiré",
+                "idle_time": "-",
+                "bytes_in": f"{round(t.bytes_in / (1024 * 1024), 1)} MB" if t.bytes_in else "0 MB",
+                "bytes_out": f"{round(t.bytes_out / (1024 * 1024), 1)} MB" if t.bytes_out else "0 MB",
+                "total_traffic": f"{round((t.bytes_in + t.bytes_out) / (1024 * 1024), 1)} MB",
+                "total_bytes_raw": t.bytes_in + t.bytes_out,
+                "login_by": "cloud",
+            }
+            for t in active_tickets
+        ]
+
+        # Enrichissement temps réel si MikroTik est en ligne
+        try:
+            from .services.mikrotik import MikrotikService
+            pool = MikrotikService.get_api_connection(router, timeout=2.5)
+            api = pool.get_api()
+            ros_active = api.get_resource("/ip/hotspot/active").get()
+            pool.disconnect()
+            ros_map = {a.get("user"): a for a in ros_active if a.get("user")}
+            for item in active_list:
+                m_info = ros_map.get(item["user"])
+                if m_info:
+                    if m_info.get("address"):
+                        item["address"] = m_info.get("address")
+                    if m_info.get("mac-address"):
+                        item["mac_address"] = m_info.get("mac-address")
+                    if m_info.get("id"):
+                        item["ros_active_id"] = m_info.get("id")
+        except Exception:
+            pass
+
+        return Response({
+            "online": True,
+            "active_count": active_count,
+            "total_users_count": total_users_count,
+            "profiles_count": profiles_count,
+            "active_users": active_list,
+        })
 
 
 class RouterHotspotUsersView(APIView):
@@ -500,12 +561,15 @@ class RouterHotspotProfilesView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    DEFAULT_PROFILES = [
-        {"name": "1 Heure", "price": 100, "session_timeout": "1h", "rate_limit": "2M/2M", "shared_users": 1, "comment": "Accès standard 1h"},
-        {"name": "3 Heures", "price": 200, "session_timeout": "3h", "rate_limit": "3M/3M", "shared_users": 1, "comment": "Accès standard 3h"},
-        {"name": "Pass 24 Heures", "price": 500, "session_timeout": "24h", "rate_limit": "5M/5M", "shared_users": 1, "comment": "Pass journée illimitée"},
-        {"name": "1 Mois", "price": 5000, "session_timeout": "30d", "rate_limit": "10M/10M", "shared_users": 1, "comment": "Abonnement mensuel"},
-    ]
+    DEFAULT_PROFILE = {
+        "name": "default",
+        "price": 100,
+        "session_timeout": "1h",
+        "rate_limit": "2M/2M",
+        "shared_users": 1,
+        "is_active": True,
+        "comment": "Profil par défaut",
+    }
 
     def get(self, request, router_id):
         from .models import CloudHotspotProfile
@@ -518,10 +582,9 @@ class RouterHotspotProfilesView(APIView):
 
         qs = CloudHotspotProfile.objects.filter(router=router)
 
-        # Initialisation automatique des profils par défaut si la liste est vide
+        # Initialisation automatique d'un unique profil 'default' si la liste est vide
         if not qs.exists():
-            for p_def in self.DEFAULT_PROFILES:
-                CloudHotspotProfile.objects.create(router=router, **p_def)
+            CloudHotspotProfile.objects.create(router=router, **self.DEFAULT_PROFILE)
             qs = CloudHotspotProfile.objects.filter(router=router)
 
         active_only = request.query_params.get("active_only")
@@ -677,12 +740,68 @@ class RouterHotspotProfilesView(APIView):
             return Response({"detail": "Forfait introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
 
+def get_saas_sales_report_data(router):
+    """Calcule le rapport financier Hotspot (CA jour, hier, mois, tickets) 100% PostgreSQL."""
+    from .models import HotspotTicket
+    from django.db.models import Sum
+    from django.utils import timezone
+    import datetime
+
+    now = timezone.now()
+    today = now.date()
+    yesterday = today - datetime.timedelta(days=1)
+
+    qs = HotspotTicket.objects.filter(router=router).select_related("batch")
+
+    today_qs = qs.filter(created_at__date=today)
+    yesterday_qs = qs.filter(created_at__date=yesterday)
+    month_qs = qs.filter(created_at__year=now.year, created_at__month=now.month)
+
+    today_revenue = int(today_qs.aggregate(s=Sum("price"))["s"] or 0)
+    today_count = today_qs.count()
+
+    yesterday_revenue = int(yesterday_qs.aggregate(s=Sum("price"))["s"] or 0)
+    yesterday_count = yesterday_qs.count()
+
+    month_revenue = int(month_qs.aggregate(s=Sum("price"))["s"] or 0)
+    month_count = month_qs.count()
+
+    total_revenue = int(qs.aggregate(s=Sum("price"))["s"] or 0)
+    total_count = qs.count()
+
+    recent_tickets = qs.order_by("-created_at")[:60]
+    sales_history = [
+        {
+            "id": str(t.id),
+            "code": t.code,
+            "profile": t.profile_name,
+            "price": int(t.price),
+            "batch_id": t.batch.name if t.batch and t.batch.name else "Vente Directe",
+            "date": t.created_at.strftime("%Y-%m-%d"),
+            "time": t.created_at.strftime("%H:%M"),
+            "status": t.status,
+        }
+        for t in recent_tickets
+    ]
+
+    return {
+        "today_revenue": today_revenue,
+        "today_count": today_count,
+        "yesterday_revenue": yesterday_revenue,
+        "yesterday_count": yesterday_count,
+        "month_revenue": month_revenue,
+        "month_count": month_count,
+        "total_revenue": total_revenue,
+        "total_count": total_count,
+        "sales_history": sales_history,
+    }
+
+
 class RouterSalesReportView(APIView):
-    """Rapport de ventes Hotspot (CA jour, hier, mois, historique tickets)."""
+    """Rapport de ventes Hotspot (CA jour, hier, mois, historique tickets) 100% PostgreSQL."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, router_id):
-        from .services.mikrotik import MikrotikService
         try:
             router = get_user_router_or_404(
                 request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
@@ -690,7 +809,7 @@ class RouterSalesReportView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        data = MikrotikService.get_sales_report(router)
+        data = get_saas_sales_report_data(router)
         return Response(data)
 
 
@@ -700,7 +819,6 @@ class RouterSalesReportPdfView(APIView):
 
     def get(self, request, router_id):
         from django.http import HttpResponse
-        from .services.mikrotik import MikrotikService
         from .services.pdf_service import generate_sales_report_pdf
         import datetime
 
@@ -711,7 +829,7 @@ class RouterSalesReportPdfView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        data = MikrotikService.get_sales_report(router)
+        data = get_saas_sales_report_data(router)
         pdf_bytes = generate_sales_report_pdf(router, data)
 
         today_slug = datetime.date.today().strftime("%Y-%m-%d")

@@ -133,11 +133,12 @@ class TestMikrootSaaSWorkflow:
         r_resp = self.client.post("/api/routers/create/", {"name": "routeur-cloud", "mikhmon_instance_id": inst_id})
         router_id = r_resp.data["router"]["id"]
 
-        # 1. GET initial : auto-initialisation des 4 profils par défaut
+        # 1. GET initial : auto-initialisation de l'unique profil par défaut 'default'
         list_resp = self.client.get(f"/api/routers/{router_id}/hotspot/profiles/")
         assert list_resp.status_code == 200
-        assert list_resp.data["count"] == 4
-        assert list_resp.data["results"][0]["price"] in [100, 200, 500, 5000]
+        assert list_resp.data["count"] == 1
+        assert list_resp.data["results"][0]["name"] == "default"
+        assert list_resp.data["results"][0]["price"] == 100
 
         # 2. POST : Ajout d'un nouveau profil sur mesure
         create_resp = self.client.post(
@@ -176,3 +177,59 @@ class TestMikrootSaaSWorkflow:
         assert ticket_gen_resp.data["count"] == 5
         assert ticket_gen_resp.data["tickets"][0]["price"] == 300
         assert ticket_gen_resp.data["tickets"][0]["time_limit"] == "8h"
+
+        # 5. Vérification du rapport de ventes 100% PostgreSQL
+        sales_resp = self.client.get(f"/api/routers/{router_id}/reports/")
+        assert sales_resp.status_code == 200
+        assert sales_resp.data["today_revenue"] == 1500  # 5 tickets * 300 FCFA
+        assert sales_resp.data["today_count"] == 5
+        assert len(sales_resp.data["sales_history"]) == 5
+
+    def test_ticket_continuous_calendar_validity(self):
+        """Vérifie que le compte à rebours calendaire absolu (expires_at) empêche le partage différé."""
+        from django.utils import timezone
+        from datetime import timedelta
+        from apps.routers.models import HotspotBatch, HotspotTicket, Router
+        from apps.instances.models import MikhmonInstance
+
+        inst = MikhmonInstance.objects.create(user=self.technician, name="test-hotspot-zone")
+        now = timezone.now()
+        router = Router.objects.create(
+            user=self.technician,
+            mikhmon_instance=inst,
+            name="Routeur Test Calendrier",
+            expires_at=now + timedelta(days=30),
+        )
+        batch = HotspotBatch.objects.create(
+            router=router,
+            name="Lot Test Calendrier",
+            time_limit="1h",
+            price=Decimal("100.00"),
+            count=1,
+        )
+        now = timezone.now()
+        ticket = HotspotTicket.objects.create(
+            batch=batch,
+            router=router,
+            code="TESTCAL01",
+            password="pass",
+            time_limit_seconds=3600,
+            first_login_at=now - timedelta(minutes=70),
+            expires_at=now - timedelta(minutes=10),  # Expiré il y a 10 min
+            status=HotspotTicket.Status.ACTIVE,
+        )
+        assert ticket.remaining_seconds == 0
+
+        # Ticket actif avec 15 minutes restantes
+        ticket_active = HotspotTicket.objects.create(
+            batch=batch,
+            router=router,
+            code="TESTCAL02",
+            password="pass",
+            time_limit_seconds=3600,
+            first_login_at=now - timedelta(minutes=45),
+            expires_at=now + timedelta(minutes=15),
+            status=HotspotTicket.Status.ACTIVE,
+        )
+        assert 800 <= ticket_active.remaining_seconds <= 900
+

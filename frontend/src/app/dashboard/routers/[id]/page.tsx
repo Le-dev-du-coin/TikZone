@@ -455,16 +455,6 @@ export default function RouterDashboardPage({ params }: PageProps) {
 
           <button
             type="button"
-            onClick={handleOpenRadiusModal}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs font-bold border border-emerald-300 dark:border-emerald-700 transition-colors shadow-2xs cursor-pointer"
-            title="Afficher le script Terminal pour brancher ce MikroTik au Cloud RADIUS"
-          >
-            <Radio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Script RADIUS (1-Clic)</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setShowCredentialsModal(true)}
             className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer transition-colors"
             title="Modifier les identifiants MikroTik"
