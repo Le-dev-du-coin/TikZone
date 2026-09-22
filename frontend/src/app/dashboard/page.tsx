@@ -184,6 +184,17 @@ export default function ClientDashboardPage() {
     setModalAdminPassword(inst.admin_password || "mikroot2026");
   };
 
+  const buildClientLoginUrl = (subdomainName: string, userLogin: string) => {
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname;
+      if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return `${window.location.origin}/login?user=${encodeURIComponent(userLogin)}`;
+      }
+    }
+    const cleanSub = subdomainName.toLowerCase().trim();
+    return `https://${cleanSub}.tikzone.net/login?user=${encodeURIComponent(userLogin)}`;
+  };
+
   const handleSaveAccess = async (andOpenWhatsApp: boolean = false) => {
     if (!accessModalInstance) return;
     setSavingAccess(true);
@@ -204,8 +215,7 @@ export default function ClientDashboardPage() {
         prev.map((i) => (i.id === accessModalInstance.id ? { ...i, ...updated } : i))
       );
 
-      const origin = typeof window !== "undefined" ? window.location.origin : "https://app.tikzone.net";
-      const loginUrl = `${origin}/login?user=${encodeURIComponent(cleanUser)}`;
+      const loginUrl = buildClientLoginUrl(accessModalInstance.name, cleanUser);
       const nameGreeting = cleanName ? ` ${cleanName}` : "";
       const phoneDigits = cleanPhone.replace(/\D/g, "");
 
@@ -239,8 +249,7 @@ export default function ClientDashboardPage() {
     const cleanUser = modalAdminUser.trim() || "admin";
     const cleanPass = modalAdminPassword.trim() || "mikroot2026";
     const cleanName = modalClientName.trim();
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://app.tikzone.net";
-    const loginUrl = `${origin}/login?user=${encodeURIComponent(cleanUser)}`;
+    const loginUrl = buildClientLoginUrl(accessModalInstance.name, cleanUser);
     const nameGreeting = cleanName ? ` ${cleanName}` : "";
 
     const msg = `Bonjour${nameGreeting},\nVoici votre lien pour gérer vos tickets WiFi Zone (${accessModalInstance.name}) :\n\nLien : ${loginUrl}\nIdentifiant : ${cleanUser}\nMot de passe : ${cleanPass}\n\nEnregistrez vos identifiants pour vous connecter en 1 clic.`;
@@ -978,7 +987,7 @@ export default function ClientDashboardPage() {
                   </button>
                 </div>
                 <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-emerald-100 dark:border-emerald-900/40 text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-line font-sans">
-                  {`Bonjour${modalClientName.trim() ? ` ${modalClientName.trim()}` : ""},\nVoici votre lien pour gérer vos tickets WiFi Zone (${accessModalInstance.name}) :\n\nLien : https://app.tikzone.net/login?user=${encodeURIComponent(modalAdminUser.trim() || "admin")}\nIdentifiant : ${modalAdminUser.trim() || "admin"}\nMot de passe : ${modalAdminPassword.trim() || "mikroot2026"}\n\nEnregistrez vos identifiants pour vous connecter en 1 clic.`}
+                  {`Bonjour${modalClientName.trim() ? ` ${modalClientName.trim()}` : ""},\nVoici votre lien pour gérer vos tickets WiFi Zone (${accessModalInstance.name}) :\n\nLien : ${buildClientLoginUrl(accessModalInstance.name, modalAdminUser.trim() || "admin")}\nIdentifiant : ${modalAdminUser.trim() || "admin"}\nMot de passe : ${modalAdminPassword.trim() || "mikroot2026"}\n\nEnregistrez vos identifiants pour vous connecter en 1 clic.`}
                 </div>
               </div>
             </div>

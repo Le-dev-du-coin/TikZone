@@ -369,3 +369,36 @@ class HotspotTicket(models.Model):
                 total += num
         return total if total > 0 else 3600
 
+
+class CloudHotspotProfile(models.Model):
+    """
+    Profil de connexion / forfait Hotspot Cloud centralisé.
+    Pilote les attributs RADIUS (Mikrotik-Rate-Limit, Session-Timeout) et les prix de vente en FCFA.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    router = models.ForeignKey(Router, on_delete=models.CASCADE, related_name="cloud_profiles")
+    name = models.CharField("Nom du Forfait", max_length=100)
+    price = models.DecimalField("Prix de Vente (FCFA)", max_digits=10, decimal_places=0, default=100)
+    rate_limit = models.CharField("Limite de Débit", max_length=50, blank=True, default="2M/2M")
+    session_timeout = models.CharField("Durée de Connexion", max_length=50, default="1h")
+    session_timeout_seconds = models.PositiveIntegerField("Durée en Secondes", default=3600)
+    shared_users = models.PositiveIntegerField("Appareils en Simultané", default=1)
+    is_active = models.BooleanField("Actif (Disponible à la vente)", default=True)
+    comment = models.CharField("Description / Libellé", max_length=200, blank=True, default="")
+    created_at = models.DateTimeField("Date de Création", auto_now_add=True)
+    updated_at = models.DateTimeField("Dernière Mise à Jour", auto_now=True)
+
+    class Meta:
+        verbose_name = "Profil Hotspot Cloud"
+        verbose_name_plural = "Profils Hotspot Cloud"
+        unique_together = [("router", "name")]
+        ordering = ["price", "created_at"]
+
+    def __str__(self):
+        return f"{self.name} - {self.price} FCFA ({self.session_timeout})"
+
+    def save(self, *args, **kwargs):
+        if self.session_timeout:
+            self.session_timeout_seconds = HotspotTicket.parse_time_limit_to_seconds(self.session_timeout)
+        super().save(*args, **kwargs)
+

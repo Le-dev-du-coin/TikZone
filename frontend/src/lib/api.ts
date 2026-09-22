@@ -374,15 +374,16 @@ export const api = {
     return await res.json();
   },
 
-  async getRouterProfiles(routerId: string) {
-    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/`, {
+  async getRouterProfiles(routerId: string, params?: { active_only?: boolean }) {
+    const q = params?.active_only ? "?active_only=true" : "";
+    const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/${q}`, {
       headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error("Erreur des profils Hotspot");
     return await res.json();
   },
 
-  async createRouterProfile(routerId: string, data: { name: string; rate_limit?: string; shared_users?: number; session_timeout?: string; price?: number; comment?: string }) {
+  async createRouterProfile(routerId: string, data: { name: string; rate_limit?: string; shared_users?: number; session_timeout?: string; price?: number; is_active?: boolean; comment?: string }) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/`, {
       method: "POST",
       headers: getAuthHeaders(),
@@ -393,7 +394,7 @@ export const api = {
     return result;
   },
 
-  async updateRouterProfile(routerId: string, data: { id: string; name?: string; rate_limit?: string; shared_users?: number; session_timeout?: string; price?: number; comment?: string }) {
+  async updateRouterProfile(routerId: string, data: { id: string; name?: string; rate_limit?: string; shared_users?: number; session_timeout?: string; price?: number; is_active?: boolean; comment?: string }) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/hotspot/profiles/`, {
       method: "PATCH",
       headers: getAuthHeaders(),

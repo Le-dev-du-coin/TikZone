@@ -136,8 +136,15 @@ class RadiusEngineService:
             "Session-Timeout": remaining_timeout,
         }
 
-        # Débit selon le profil (par défaut 2M/5M si non spécifié)
-        attributes["Mikrotik-Rate-Limit"] = "2M/5M"
+        # Débit selon le forfait Cloud Hotspot (dynamique)
+        from apps.routers.models import CloudHotspotProfile
+        cloud_prof = CloudHotspotProfile.objects.filter(
+            router=ticket.router, name__iexact=ticket.profile_name
+        ).first()
+        if cloud_prof and cloud_prof.rate_limit and cloud_prof.rate_limit.lower() != "illimité":
+            attributes["Mikrotik-Rate-Limit"] = cloud_prof.rate_limit
+        else:
+            attributes["Mikrotik-Rate-Limit"] = "5M/10M"
 
         logger.info(
             f"RADIUS ACCEPT: Ticket '{username}' ({ticket.profile_name}) validé pour {remaining_timeout}s sur NAS {nas_ip}"

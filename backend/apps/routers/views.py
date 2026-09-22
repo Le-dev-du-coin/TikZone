@@ -494,11 +494,21 @@ class RouterGenerateTicketsView(APIView):
 
 
 class RouterHotspotProfilesView(APIView):
-    """Liste des profils de bande passante et de durée du Hotspot."""
+    """
+    Gestion centralisée des forfaits Hotspot Cloud (100% Cloud RADIUS natif).
+    Stocké dans PostgreSQL, garantit la cohérence des prix FCFA et des quotas.
+    """
     permission_classes = [permissions.IsAuthenticated]
 
+    DEFAULT_PROFILES = [
+        {"name": "1 Heure", "price": 100, "session_timeout": "1h", "rate_limit": "2M/2M", "shared_users": 1, "comment": "Accès standard 1h"},
+        {"name": "3 Heures", "price": 200, "session_timeout": "3h", "rate_limit": "3M/3M", "shared_users": 1, "comment": "Accès standard 3h"},
+        {"name": "Pass 24 Heures", "price": 500, "session_timeout": "24h", "rate_limit": "5M/5M", "shared_users": 1, "comment": "Pass journée illimitée"},
+        {"name": "1 Mois", "price": 5000, "session_timeout": "30d", "rate_limit": "10M/10M", "shared_users": 1, "comment": "Abonnement mensuel"},
+    ]
+
     def get(self, request, router_id):
-        from .services.mikrotik import MikrotikService
+        from .models import CloudHotspotProfile
         try:
             router = get_user_router_or_404(
                 request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
@@ -506,11 +516,39 @@ class RouterHotspotProfilesView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        profiles = MikrotikService.get_profiles(router)
-        return Response({"count": len(profiles), "results": profiles})
+        qs = CloudHotspotProfile.objects.filter(router=router)
+
+        # Initialisation automatique des profils par défaut si la liste est vide
+        if not qs.exists():
+            for p_def in self.DEFAULT_PROFILES:
+                CloudHotspotProfile.objects.create(router=router, **p_def)
+            qs = CloudHotspotProfile.objects.filter(router=router)
+
+        active_only = request.query_params.get("active_only")
+        if active_only == "true":
+            qs = qs.filter(is_active=True)
+
+        results = [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "price": int(p.price),
+                "rate_limit": p.rate_limit or "Illimité",
+                "session_timeout": p.session_timeout,
+                "session_timeout_seconds": p.session_timeout_seconds,
+                "shared_users": p.shared_users,
+                "is_active": p.is_active,
+                "enabled": p.is_active,  # Alias pour compatibilité
+                "comment": p.comment,
+                "created_at": p.created_at,
+            }
+            for p in qs
+        ]
+
+        return Response({"count": len(results), "results": results})
 
     def post(self, request, router_id):
-        from .services.mikrotik import MikrotikService
+        from .models import CloudHotspotProfile
         try:
             router = get_user_router_or_404(
                 request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
@@ -518,32 +556,47 @@ class RouterHotspotProfilesView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        name = request.data.get("name")
+        name = request.data.get("name", "").strip()
         if not name:
-            return Response({"detail": "Le nom du profil est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Le nom du forfait est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
 
-        rate_limit = request.data.get("rate_limit", "")
-        shared_users = int(request.data.get("shared_users", 1))
-        session_timeout = request.data.get("session_timeout", "")
+        if CloudHotspotProfile.objects.filter(router=router, name__iexact=name).exists():
+            return Response({"detail": f"Un forfait nommé '{name}' existe déjà."}, status=status.HTTP_400_BAD_REQUEST)
+
         price = int(request.data.get("price", 100))
+        rate_limit = request.data.get("rate_limit", "2M/2M")
+        session_timeout = request.data.get("session_timeout", "1h")
+        shared_users = int(request.data.get("shared_users", 1))
+        raw_active = request.data.get("is_active", request.data.get("enabled", True))
+        is_active = raw_active if isinstance(raw_active, bool) else str(raw_active).lower() in ("true", "1", "yes")
         comment = request.data.get("comment", "")
 
-        try:
-            res = MikrotikService.add_profile(
-                router,
-                name=name,
-                rate_limit=rate_limit,
-                shared_users=shared_users,
-                session_timeout=session_timeout,
-                price=price,
-                comment=comment,
-            )
-            return Response(res, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"detail": f"Erreur de création : {e}"}, status=status.HTTP_400_BAD_REQUEST)
+        profile = CloudHotspotProfile.objects.create(
+            router=router,
+            name=name,
+            price=price,
+            rate_limit=rate_limit,
+            session_timeout=session_timeout,
+            shared_users=shared_users,
+            is_active=is_active,
+            comment=comment,
+        )
+
+        return Response({
+            "id": str(profile.id),
+            "name": profile.name,
+            "price": int(profile.price),
+            "rate_limit": profile.rate_limit,
+            "session_timeout": profile.session_timeout,
+            "session_timeout_seconds": profile.session_timeout_seconds,
+            "shared_users": profile.shared_users,
+            "is_active": profile.is_active,
+            "enabled": profile.is_active,
+            "comment": profile.comment,
+        }, status=status.HTTP_201_CREATED)
 
     def patch(self, request, router_id):
-        from .services.mikrotik import MikrotikService
+        from .models import CloudHotspotProfile
         try:
             router = get_user_router_or_404(
                 request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
@@ -551,34 +604,59 @@ class RouterHotspotProfilesView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        profile_id = request.data.get("id")
+        profile_id = request.data.get("id") or request.data.get("profile_id")
         if not profile_id:
-            return Response({"detail": "L'identifiant du profil est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
-
-        name = request.data.get("name", "")
-        rate_limit = request.data.get("rate_limit", "")
-        shared_users = int(request.data.get("shared_users")) if "shared_users" in request.data else None
-        session_timeout = request.data.get("session_timeout", "")
-        price = int(request.data.get("price")) if "price" in request.data else None
-        comment = request.data.get("comment", "")
+            return Response({"detail": "L'identifiant du forfait est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            MikrotikService.update_profile(
-                router,
-                profile_id=profile_id,
-                name=name,
-                rate_limit=rate_limit,
-                shared_users=shared_users,
-                session_timeout=session_timeout,
-                price=price,
-                comment=comment,
-            )
-            return Response({"detail": "Profil mis à jour avec succès."})
-        except Exception as e:
-            return Response({"detail": f"Erreur de modification : {e}"}, status=status.HTTP_400_BAD_REQUEST)
+            profile = CloudHotspotProfile.objects.get(id=profile_id, router=router)
+        except (CloudHotspotProfile.DoesNotExist, ValueError):
+            return Response({"detail": "Forfait Cloud introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        if "name" in request.data:
+            new_name = request.data["name"].strip()
+            if new_name and new_name.lower() != profile.name.lower():
+                if CloudHotspotProfile.objects.filter(router=router, name__iexact=new_name).exclude(id=profile.id).exists():
+                    return Response({"detail": f"Un forfait nommé '{new_name}' existe déjà."}, status=status.HTTP_400_BAD_REQUEST)
+                profile.name = new_name
+
+        if "price" in request.data:
+            profile.price = int(request.data["price"])
+
+        if "rate_limit" in request.data:
+            profile.rate_limit = request.data["rate_limit"]
+
+        if "session_timeout" in request.data:
+            profile.session_timeout = request.data["session_timeout"]
+
+        if "shared_users" in request.data:
+            profile.shared_users = int(request.data["shared_users"])
+
+        if "is_active" in request.data or "enabled" in request.data:
+            raw_val = request.data.get("is_active", request.data.get("enabled"))
+            profile.is_active = raw_val if isinstance(raw_val, bool) else str(raw_val).lower() in ("true", "1", "yes")
+
+        if "comment" in request.data:
+            profile.comment = request.data["comment"]
+
+        profile.save()
+
+        return Response({
+            "id": str(profile.id),
+            "name": profile.name,
+            "price": int(profile.price),
+            "rate_limit": profile.rate_limit,
+            "session_timeout": profile.session_timeout,
+            "session_timeout_seconds": profile.session_timeout_seconds,
+            "shared_users": profile.shared_users,
+            "is_active": profile.is_active,
+            "enabled": profile.is_active,
+            "comment": profile.comment,
+            "detail": "Forfait mis à jour avec succès.",
+        })
 
     def delete(self, request, router_id):
-        from .services.mikrotik import MikrotikService
+        from .models import CloudHotspotProfile
         try:
             router = get_user_router_or_404(
                 request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
@@ -588,13 +666,15 @@ class RouterHotspotProfilesView(APIView):
 
         profile_id = request.query_params.get("id") or request.data.get("id")
         if not profile_id:
-            return Response({"detail": "L'identifiant du profil à supprimer est requis."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "L'identifiant du forfait à supprimer est requis."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            MikrotikService.delete_profile(router, profile_id=profile_id)
-            return Response({"detail": "Profil supprimé avec succès."})
-        except Exception as e:
-            return Response({"detail": f"Erreur de suppression : {e}"}, status=status.HTTP_400_BAD_REQUEST)
+            profile = CloudHotspotProfile.objects.get(id=profile_id, router=router)
+            name = profile.name
+            profile.delete()
+            return Response({"detail": f"Forfait '{name}' supprimé avec succès."})
+        except (CloudHotspotProfile.DoesNotExist, ValueError):
+            return Response({"detail": "Forfait introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class RouterSalesReportView(APIView):
@@ -800,8 +880,20 @@ class RouterSaaSTicketsView(APIView):
             raw_length = int(request.data.get("code_length", 6))
             code_length = raw_length if raw_length in [4, 6, 8] else 6
             code_format = request.data.get("code_format", "numeric")
-            price = int(request.data.get("price", 100))
+            raw_price = request.data.get("price")
             comment = request.data.get("comment", "").strip()
+
+            from .models import CloudHotspotProfile
+            cloud_profile = CloudHotspotProfile.objects.filter(router=router, name__iexact=profile_name).first()
+            if cloud_profile:
+                if raw_price is None:
+                    price = int(cloud_profile.price)
+                else:
+                    price = int(raw_price)
+                if "time_limit" not in request.data:
+                    time_limit = cloud_profile.session_timeout
+            else:
+                price = int(raw_price) if raw_price is not None else 100
 
             batch, created_tickets = RadiusEngineService.generate_batch_in_db(
                 router=router,

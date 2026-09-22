@@ -24,7 +24,15 @@ class VpnCredentialAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at")
 
 
-from .models import HotspotBatch, HotspotTicket
+from .models import HotspotBatch, HotspotTicket, CloudHotspotProfile
+
+
+@admin.register(CloudHotspotProfile)
+class CloudHotspotProfileAdmin(admin.ModelAdmin):
+    list_display = ("name", "router", "price", "session_timeout", "rate_limit", "shared_users", "is_active", "created_at")
+    list_filter = ("is_active", "created_at")
+    search_fields = ("name", "router__name", "comment")
+    readonly_fields = ("id", "session_timeout_seconds", "created_at", "updated_at")
 
 
 @admin.register(HotspotBatch)

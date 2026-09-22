@@ -29,12 +29,11 @@ export default function RouterTicketsPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const routerId = resolvedParams.id;
 
-  // Choix du moteur : SaaS Cloud RADIUS (par défaut) ou RouterOS local
-  const [engineMode, setEngineMode] = useState<"saas" | "routeros">("saas");
+  // Mode Cloud RADIUS Natif (exclusif)
   const [authMode, setAuthMode] = useState<"single" | "dual">("single");
   const [profiles, setProfiles] = useState<any[]>([]);
   const [count, setCount] = useState(20);
-  const [profile, setProfile] = useState("default");
+  const [profile, setProfile] = useState("");
   const [timeLimit, setTimeLimit] = useState("1h");
   const [prefix, setPrefix] = useState("");
   const [codeLength, setCodeLength] = useState<4 | 6 | 8>(6);
@@ -82,16 +81,27 @@ export default function RouterTicketsPage({ params }: PageProps) {
       .catch(() => {});
 
     api
-      .getRouterProfiles(routerId)
+      .getRouterProfiles(routerId, { active_only: true })
       .then((res) => {
-        const list = (res.results || []).filter((p: any) => p.name?.toLowerCase() !== "default");
+        const list = (res.results || []).filter((p: any) => p.is_active !== false);
         setProfiles(list);
         if (list.length > 0) {
           setProfile(list[0].name);
+          if (list[0].price !== undefined) setPrice(Number(list[0].price));
+          if (list[0].session_timeout) setTimeLimit(list[0].session_timeout);
         }
       })
       .catch(() => {});
   }, [routerId]);
+
+  const handleProfileChange = (profileName: string) => {
+    setProfile(profileName);
+    const found = profiles.find((p) => p.name === profileName);
+    if (found) {
+      if (found.price !== undefined) setPrice(Number(found.price));
+      if (found.session_timeout) setTimeLimit(found.session_timeout);
+    }
+  };
 
   const handleOpenRadiusModal = async () => {
     setShowRadiusModal(true);
@@ -134,18 +144,11 @@ export default function RouterTicketsPage({ params }: PageProps) {
         comment: customComment,
       };
 
-      let res;
-      if (engineMode === "saas") {
-        res = await api.generateSaaSTickets(routerId, payload);
-      } else {
-        res = await api.generateRouterTickets(routerId, payload);
-      }
+      const res = await api.generateSaaSTickets(routerId, payload);
 
       setTickets(res.tickets || []);
       setSuccessMsg(
-        engineMode === "saas"
-          ? `${res.count || count} tickets SaaS Cloud RADIUS générés instantanément en base !`
-          : `${res.count || count} tickets générés sur RouterOS avec succès !`
+        `${res.count || count} tickets Cloud RADIUS générés avec succès (${price} FCFA / ticket) !`
       );
     } catch (err: any) {
       setErrorMsg(err.message || "Erreur de génération des tickets");
@@ -283,65 +286,16 @@ export default function RouterTicketsPage({ params }: PageProps) {
         )}
 
         <form onSubmit={handleGenerate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Sélecteur Moteur Cloud RADIUS vs RouterOS Local */}
+          {/* Mode d'authentification (1 champ vs 2 champs) */}
           <div className="sm:col-span-2 lg:col-span-3 space-y-1.5 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Moteur de Gestion des Tickets
+                Mode d'authentification au portail Wi-Fi
               </label>
               <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> Moteur Cloud RADIUS actif
+                <ShieldCheck className="w-3.5 h-3.5" /> Moteur Cloud RADIUS Haute Performance (PostgreSQL)
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setEngineMode("saas")}
-                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                  engineMode === "saas"
-                    ? "border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-2 ring-emerald-600/20"
-                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
-                }`}
-              >
-                <div className="font-bold text-xs flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${engineMode === "saas" ? "bg-emerald-600" : "bg-slate-400"}`} />
-                    Cloud RADIUS (Recommandé)
-                  </span>
-                  <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-black">
-                    Ultra-Rapide &lt; 50ms
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                  Tickets gérés sur le Cloud PostgreSQL. 0 charge CPU sur le routeur, roaming multi-antennes.
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setEngineMode("routeros")}
-                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                  engineMode === "routeros"
-                    ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 ring-2 ring-blue-600/20"
-                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
-                }`}
-              >
-                <div className="font-bold text-xs flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${engineMode === "routeros" ? "bg-blue-600" : "bg-slate-400"}`} />
-                  Moteur Local RouterOS
-                </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                  Écriture directe dans la mémoire Flash du MikroTik (/ip/hotspot/user).
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Mode d'authentification (1 champ vs 2 champs) */}
-          <div className="sm:col-span-2 lg:col-span-3 space-y-1.5 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Mode d'authentification au portail Wi-Fi
-            </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
@@ -354,7 +308,7 @@ export default function RouterTicketsPage({ params }: PageProps) {
               >
                 <div className="font-bold text-xs flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${authMode === "single" ? "bg-blue-600" : "bg-slate-400"}`} />
-                  Code unique / PIN
+                  Code unique / PIN (Recommandé)
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
                   1 seul champ au portail (Nom d'utilisateur = Mot de passe). Idéal smartphones.
@@ -381,6 +335,36 @@ export default function RouterTicketsPage({ params }: PageProps) {
             </div>
           </div>
 
+          {/* Profil / Forfait Hotspot */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Forfait Hotspot
+              </label>
+              <Link
+                href={`/dashboard/routers/${routerId}/profiles`}
+                className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Gérer les forfaits
+              </Link>
+            </div>
+            <select
+              value={profile}
+              onChange={(e) => handleProfileChange(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+            >
+              {profiles.length === 0 ? (
+                <option value="default">Standard (Défaut)</option>
+              ) : (
+                profiles.map((p) => (
+                  <option key={p.id || p.name} value={p.name}>
+                    {p.name} — {Number(p.price || 0).toLocaleString("fr-FR")} FCFA ({p.session_timeout || "1h"})
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
           {/* Nombre de tickets */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -398,44 +382,26 @@ export default function RouterTicketsPage({ params }: PageProps) {
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              Génération optimisée sans risque de saturation du routeur.
+              Génération instantanée en base PostgreSQL.
             </p>
           </div>
 
           {/* Prix unitaire */}
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Prix de Vente (FCFA)
+              Prix de Vente Unitaire (FCFA)
             </label>
             <input
               type="number"
               min={0}
               step={25}
               value={price}
-              onChange={(e) => setPrice(parseInt(e.target.value) || 100)}
+              onChange={(e) => setPrice(parseInt(e.target.value) || 0)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
             />
-          </div>
-
-          {/* Profil Hotspot */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Profil de Débit / Validité
-            </label>
-            <select
-              value={profile}
-              onChange={(e) => setProfile(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-            >
-              <option value="default">default</option>
-              {profiles
-                .filter((p) => p.name?.toLowerCase() !== "default")
-                .map((p) => (
-                  <option key={p.id || p.name} value={p.name}>
-                    {p.name} ({p.rate_limit || "Illimité"})
-                  </option>
-                ))}
-            </select>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Synchronisé avec le forfait sélectionné.
+            </p>
           </div>
 
           {/* Durée de connexion */}
@@ -527,19 +493,13 @@ export default function RouterTicketsPage({ params }: PageProps) {
             <button
               type="submit"
               disabled={loading}
-              className={`py-2.5 px-6 text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                engineMode === "saas"
-                  ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
-                  : "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"
-              }`}
+              className="py-2.5 px-6 text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"
             >
               <Zap className="w-4 h-4" />
               <span>
                 {loading
                   ? "Génération en cours..."
-                  : engineMode === "saas"
-                  ? `Générer ${count} Tickets Cloud RADIUS (Instantané)`
-                  : `Générer ${count} Tickets RouterOS`}
+                  : `Générer ${count} Tickets Cloud RADIUS (${price} FCFA / ticket)`}
               </span>
             </button>
           </div>

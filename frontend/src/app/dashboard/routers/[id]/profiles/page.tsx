@@ -49,6 +49,8 @@ export default function RouterProfilesPage({ params }: PageProps) {
   const [sharedUsers, setSharedUsers] = useState(1);
   const [sessionTimeout, setSessionTimeout] = useState("");
   const [price, setPrice] = useState(100);
+  const [isActive, setIsActive] = useState(true);
+  const [comment, setComment] = useState("");
 
   const loadData = async () => {
     try {
@@ -75,6 +77,8 @@ export default function RouterProfilesPage({ params }: PageProps) {
     setSharedUsers(1);
     setSessionTimeout("1h");
     setPrice(100);
+    setIsActive(true);
+    setComment("");
     setErrorMsg(null);
     setMessage(null);
     setShowAddModal(true);
@@ -83,16 +87,31 @@ export default function RouterProfilesPage({ params }: PageProps) {
   const handleOpenEdit = (p: any) => {
     setEditingProfile(p);
     setName(p.name);
-    setRateLimit(p.rate_limit && p.rate_limit !== "Illimité" ? p.rate_limit : "");
+    setRateLimit(p.rate_limit && p.rate_limit !== "Illimité" ? p.rate_limit : "2M/2M");
     setSharedUsers(parseInt(p.shared_users) || 1);
-    const initialTimeout = p.raw_session_timeout && p.raw_session_timeout !== "-" 
-      ? p.raw_session_timeout 
-      : (p.session_timeout && !p.session_timeout.includes("Illimit") ? p.session_timeout : "");
-    setSessionTimeout(initialTimeout);
-    const parsedPrice = parseInt(p.price) || 100;
-    setPrice(parsedPrice);
+    setSessionTimeout(p.session_timeout || "1h");
+    setPrice(parseInt(p.price) || 100);
+    setIsActive(p.is_active !== undefined ? !!p.is_active : true);
+    setComment(p.comment || "");
     setErrorMsg(null);
     setMessage(null);
+  };
+
+  const handleToggleActive = async (p: any) => {
+    const nextStatus = !p.is_active;
+    try {
+      await api.updateRouterProfile(routerId, {
+        id: p.id,
+        is_active: nextStatus,
+      });
+      setProfiles((prev) =>
+        prev.map((item) => (item.id === p.id ? { ...item, is_active: nextStatus } : item))
+      );
+      setMessage(`Forfait '${p.name}' ${nextStatus ? "activé pour la vente" : "désactivé"}.`);
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Impossible de modifier le statut du forfait.");
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -103,12 +122,14 @@ export default function RouterProfilesPage({ params }: PageProps) {
     try {
       await api.createRouterProfile(routerId, {
         name: name.trim(),
-        rate_limit: rateLimit || undefined,
+        rate_limit: rateLimit || "2M/2M",
         shared_users: sharedUsers,
-        session_timeout: sessionTimeout || undefined,
+        session_timeout: sessionTimeout || "1h",
         price: price,
+        is_active: isActive,
+        comment: comment.trim(),
       });
-      setMessage(`Profil '${name}' créé avec succès sur le MikroTik !`);
+      setMessage(`Forfait '${name}' créé avec succès !`);
       setShowAddModal(false);
       loadData();
     } catch (err: any) {
@@ -131,8 +152,10 @@ export default function RouterProfilesPage({ params }: PageProps) {
         shared_users: sharedUsers,
         session_timeout: sessionTimeout || undefined,
         price: price,
+        is_active: isActive,
+        comment: comment.trim(),
       });
-      setMessage(`Profil '${editingProfile.name}' mis à jour.`);
+      setMessage(`Forfait '${editingProfile.name}' mis à jour.`);
       setEditingProfile(null);
       loadData();
     } catch (err: any) {
@@ -143,10 +166,10 @@ export default function RouterProfilesPage({ params }: PageProps) {
   };
 
   const handleDelete = async (profileId: string, profileName: string) => {
-    if (!confirm(`Supprimer définitivement le profil '${profileName}' du MikroTik ?`)) return;
+    if (!confirm(`Supprimer définitivement le forfait '${profileName}' ?`)) return;
     try {
       await api.deleteRouterProfile(routerId, profileId);
-      setMessage(`Profil '${profileName}' supprimé avec succès.`);
+      setMessage(`Forfait '${profileName}' supprimé avec succès.`);
       loadData();
     } catch (err: any) {
       alert("Erreur lors de la suppression : " + err.message);
@@ -160,10 +183,10 @@ export default function RouterProfilesPage({ params }: PageProps) {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <Gauge className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            <span>Profils Hotspot & Tarifications</span>
+            <span>Forfaits Hotspot Cloud (RADIUS)</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Configurez les profils de bande passante, durées de validité et prix de vente de vos forfaits Wi-Fi.
+            Gérez vos forfaits de connexion centralisés dans le Cloud : prix exacts en FCFA, débits et durées de session.
           </p>
         </div>
 
@@ -174,7 +197,7 @@ export default function RouterProfilesPage({ params }: PageProps) {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Nouveau Profil</span>
+            <span>+ Nouveau Forfait</span>
           </button>
 
           <button
@@ -208,77 +231,108 @@ export default function RouterProfilesPage({ params }: PageProps) {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800">
               <tr>
-                <th className="px-5 py-3.5">Nom du Profil</th>
-                <th className="px-5 py-3.5">Prix Forfait</th>
+                <th className="px-5 py-3.5">Statut Vente</th>
+                <th className="px-5 py-3.5">Nom du Forfait</th>
+                <th className="px-5 py-3.5">Prix Unitaire</th>
                 <th className="px-5 py-3.5">Débit (Rate Limit)</th>
-                <th className="px-5 py-3.5">Validité / Expiration</th>
+                <th className="px-5 py-3.5">Durée Session</th>
                 <th className="px-5 py-3.5">Appareils</th>
                 <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading && profiles.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400 font-sans">
-                    Lecture des profils RouterOS...
+                  <td colSpan={7} className="px-5 py-8 text-center text-slate-400 font-sans">
+                    Chargement des forfaits Cloud...
                   </td>
                 </tr>
               ) : profiles.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400 font-sans">
-                    Aucun profil configuré pour l'instant.
+                  <td colSpan={7} className="px-5 py-8 text-center text-slate-400 font-sans">
+                    Aucun forfait configuré. Cliquez sur "+ Nouveau Forfait" pour commencer.
                   </td>
                 </tr>
               ) : (
-                profiles.map((p, idx) => (
-                  <tr key={p.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="px-5 py-3.5 font-bold text-slate-900 dark:text-white font-sans text-sm">
-                      <span className="px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold">
-                        {p.name}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 font-sans">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200/60 dark:border-emerald-800/60">
-                        <Coins className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{p.price || "100 FCFA"}</span>
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 font-bold text-slate-800 dark:text-slate-200">
-                      {p.rate_limit && p.rate_limit !== "Illimité" ? p.rate_limit : "Illimité"}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-semibold text-xs border border-amber-200/60 dark:border-amber-800/60 font-sans">
-                        <Clock className="w-3.5 h-3.5 text-amber-500" />
-                        <span>{p.session_timeout || "Illimitée"}</span>
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">
-                      {p.shared_users} appareil(s)
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                profiles.map((p, idx) => {
+                  const isEnabled = p.is_active !== undefined ? !!p.is_active : true;
+                  return (
+                    <tr key={p.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      {/* Toggle Enabled / is_active */}
+                      <td className="px-5 py-3.5">
                         <button
                           type="button"
-                          onClick={() => handleOpenEdit(p)}
-                          className="p-1.5 bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-950/40 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 rounded-lg transition-colors cursor-pointer"
-                          title="Modifier le profil"
+                          onClick={() => handleToggleActive(p)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                            isEnabled
+                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-200"
+                          }`}
+                          title={isEnabled ? "Cliquez pour désactiver" : "Cliquez pour activer"}
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <span className={`w-2 h-2 rounded-full ${isEnabled ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                          <span>{isEnabled ? "Actif (En vente)" : "Désactivé"}</span>
                         </button>
-                        {p.name !== "default" && (
+                      </td>
+
+                      <td className="px-5 py-3.5 font-bold text-slate-900 dark:text-white text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-black">
+                            {p.name}
+                          </span>
+                          {p.comment && (
+                            <span className="text-[10px] text-slate-400 font-normal truncate max-w-[150px]">
+                              {p.comment}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 font-black text-xs border border-emerald-200/60 dark:border-emerald-800/60">
+                          <Coins className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>{Number(p.price || 0).toLocaleString("fr-FR")} FCFA</span>
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3.5 font-bold text-slate-800 dark:text-slate-200 font-mono">
+                        {p.rate_limit && p.rate_limit !== "Illimité" ? p.rate_limit : "Illimité"}
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-semibold text-xs border border-amber-200/60 dark:border-amber-800/60">
+                          <Clock className="w-3.5 h-3.5 text-amber-500" />
+                          <span>{p.session_timeout || "1h"}</span>
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">
+                        {p.shared_users || 1} appareil(s)
+                      </td>
+
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(p)}
+                            className="p-1.5 bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-950/40 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 rounded-lg transition-colors cursor-pointer"
+                            title="Modifier le forfait"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDelete(p.id, p.name)}
                             className="p-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-lg transition-colors cursor-pointer"
-                            title="Supprimer le profil"
+                            title="Supprimer le forfait"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -293,7 +347,7 @@ export default function RouterProfilesPage({ params }: PageProps) {
               <div className="flex items-center gap-2">
                 <Gauge className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                  {editingProfile ? `Modifier le Profil '${editingProfile.name}'` : "Nouveau Profil Hotspot"}
+                  {editingProfile ? `Modifier le Forfait '${editingProfile.name}'` : "Nouveau Forfait Hotspot Cloud"}
                 </h3>
               </div>
               <button
@@ -311,30 +365,29 @@ export default function RouterProfilesPage({ params }: PageProps) {
             <form onSubmit={editingProfile ? handleUpdate : handleCreate} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Nom du Profil
+                  Nom du Forfait *
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: 1h_100F, 24h_500F, Illimite"
+                  placeholder="Ex: 1 Heure, Pass 24 Heures, 1 Mois"
                   value={name}
-                  disabled={editingProfile?.name === "default"}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white disabled:opacity-50"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Prix de Vente (FCFA)
+                    Prix de Vente (FCFA) *
                   </label>
                   <input
                     type="number"
                     min={0}
                     step={25}
                     value={price}
-                    onChange={(e) => setPrice(parseInt(e.target.value) || 100)}
+                    onChange={(e) => setPrice(parseInt(e.target.value) || 0)}
                     required
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
                   />
@@ -355,32 +408,73 @@ export default function RouterProfilesPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Débit Max / Rate Limit (Upload/Download)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: 2M/2M, 512k/2M, 5M/10M"
-                  value={rateLimit}
-                  onChange={(e) => setRateLimit(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">Format : Upload/Download (ex: 2M/2M pour 2 Mbps)</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Débit Max (Rate Limit)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 2M/2M, 5M/5M"
+                    value={rateLimit}
+                    onChange={(e) => setRateLimit(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Upload/Download (ex: 2M/2M)</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Durée de Connexion *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 1h, 3h, 24h, 30d"
+                    value={sessionTimeout}
+                    onChange={(e) => setSessionTimeout(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Format : 30m, 1h, 24h, 7d</p>
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Durée de Session / Expiration (Uptime)
+                  Description / Note (Optionnel)
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: 1h, 2h, 1d, 7d"
-                  value={sessionTimeout}
-                  onChange={(e) => setSessionTimeout(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  placeholder="Ex: Forfait jour rapide"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Exemples : 30m, 1h, 2h30m, 1d (laisser vide si continu)</p>
+              </div>
+
+              {/* Toggle Actif / En Vente */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                <div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Disponible à la vente (Actif)
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Ce forfait apparaîtra dans le générateur de tickets
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsActive(!isActive)}
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                    isActive ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-700"
+                  }`}
+                >
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                      isActive ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -399,7 +493,7 @@ export default function RouterProfilesPage({ params }: PageProps) {
                   disabled={submitting}
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 cursor-pointer disabled:opacity-50"
                 >
-                  {submitting ? "Enregistrement..." : editingProfile ? "Sauvegarder" : "Créer le Profil"}
+                  {submitting ? "Enregistrement..." : editingProfile ? "Sauvegarder" : "Créer le Forfait"}
                 </button>
               </div>
             </form>

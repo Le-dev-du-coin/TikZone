@@ -120,3 +120,59 @@ class TestMikrootSaaSWorkflow:
         )
         assert pricing_resp.status_code == 200
         assert Decimal(pricing_resp.data["mikhmon_instance_price"]) == Decimal("1500.00")
+
+    def test_cloud_hotspot_profiles_and_pricing(self):
+        """Vérifie la gestion des forfaits Cloud Hotspot avec prix FCFA exacts et toggle is_active."""
+        self.client.force_authenticate(user=self.technician)
+        wallet = Wallet.objects.get(user=self.technician)
+        wallet.credit(Decimal("5000.00"))
+
+        inst_resp = self.client.post("/api/instances/purchase/", {"name": "cloud-zone", "routeros_version": "V7"})
+        inst_id = inst_resp.data["instance"]["id"]
+
+        r_resp = self.client.post("/api/routers/create/", {"name": "routeur-cloud", "mikhmon_instance_id": inst_id})
+        router_id = r_resp.data["router"]["id"]
+
+        # 1. GET initial : auto-initialisation des 4 profils par défaut
+        list_resp = self.client.get(f"/api/routers/{router_id}/hotspot/profiles/")
+        assert list_resp.status_code == 200
+        assert list_resp.data["count"] == 4
+        assert list_resp.data["results"][0]["price"] in [100, 200, 500, 5000]
+
+        # 2. POST : Ajout d'un nouveau profil sur mesure
+        create_resp = self.client.post(
+            f"/api/routers/{router_id}/hotspot/profiles/",
+            {
+                "name": "Pass Nuit Illimité",
+                "price": 300,
+                "rate_limit": "4M/4M",
+                "session_timeout": "8h",
+                "is_active": True,
+            },
+        )
+        assert create_resp.status_code == 201
+        profile_id = create_resp.data["id"]
+        assert create_resp.data["price"] == 300
+        assert create_resp.data["is_active"] is True
+
+        # 3. PATCH : Désactivation du profil (toggle enabled=False)
+        patch_resp = self.client.patch(
+            f"/api/routers/{router_id}/hotspot/profiles/",
+            {"id": profile_id, "is_active": False},
+        )
+        assert patch_resp.status_code == 200
+        assert patch_resp.data["is_active"] is False
+
+        # 4. Génération de tickets SaaS utilisant ce forfait : prend automatiquement le bon prix
+        ticket_gen_resp = self.client.post(
+            f"/api/routers/{router_id}/saas-tickets/",
+            {
+                "count": 5,
+                "profile": "Pass Nuit Illimité",
+                "auth_mode": "single",
+            },
+        )
+        assert ticket_gen_resp.status_code == 201
+        assert ticket_gen_resp.data["count"] == 5
+        assert ticket_gen_resp.data["tickets"][0]["price"] == 300
+        assert ticket_gen_resp.data["tickets"][0]["time_limit"] == "8h"
