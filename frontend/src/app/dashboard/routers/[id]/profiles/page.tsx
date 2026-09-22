@@ -29,7 +29,12 @@ export default function RouterProfilesPage({ params }: PageProps) {
     if (typeof window !== "undefined") {
       try {
         const cached = localStorage.getItem(`tikzone_cached_profiles_${routerId}`);
-        if (cached) return JSON.parse(cached);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            return parsed.filter((p: any) => p.name?.toLowerCase() !== "default");
+          }
+        }
       } catch {}
     }
     return [];
@@ -73,7 +78,7 @@ export default function RouterProfilesPage({ params }: PageProps) {
 
   const handleOpenAdd = () => {
     setName("");
-    setRateLimit("2M/2M");
+    setRateLimit(""); // Illimité par défaut
     setSharedUsers(1);
     setSessionTimeout("1h");
     setPrice(100);
@@ -87,7 +92,7 @@ export default function RouterProfilesPage({ params }: PageProps) {
   const handleOpenEdit = (p: any) => {
     setEditingProfile(p);
     setName(p.name);
-    setRateLimit(p.rate_limit && p.rate_limit !== "Illimité" ? p.rate_limit : "2M/2M");
+    setRateLimit(p.rate_limit && p.rate_limit !== "Illimité" ? p.rate_limit : "");
     setSharedUsers(parseInt(p.shared_users) || 1);
     setSessionTimeout(p.session_timeout || "1h");
     setPrice(parseInt(p.price) || 100);
@@ -408,35 +413,57 @@ export default function RouterProfilesPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Débit Max (Rate Limit)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: 2M/2M, 5M/5M"
-                    value={rateLimit}
-                    onChange={(e) => setRateLimit(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Upload/Download (ex: 2M/2M)</p>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Débit Max (Bande passante)</span>
+                  <span className="text-[11px] font-mono font-bold text-blue-600 dark:text-blue-400">
+                    {rateLimit ? rateLimit : "Illimité"}
+                  </span>
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {[
+                    { label: "Illimité", val: "" },
+                    { label: "1M/1M", val: "1M/1M" },
+                    { label: "2M/2M", val: "2M/2M" },
+                    { label: "5M/5M", val: "5M/5M" },
+                    { label: "10M/10M", val: "10M/10M" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setRateLimit(preset.val)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        rateLimit === preset.val
+                          ? "bg-blue-600 text-white shadow-xs"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
                 </div>
+                <input
+                  type="text"
+                  placeholder="Personnalisé (ex: 3M/3M) ou laisser vide pour Illimité"
+                  value={rateLimit}
+                  onChange={(e) => setRateLimit(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                />
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Durée de Connexion *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: 1h, 3h, 24h, 30d"
-                    value={sessionTimeout}
-                    onChange={(e) => setSessionTimeout(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Format : 30m, 1h, 24h, 7d</p>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Durée de Connexion *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: 1h, 3h, 24h, 30d"
+                  value={sessionTimeout}
+                  onChange={(e) => setSessionTimeout(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Format : 30m, 1h, 24h, 7d</p>
               </div>
 
               <div>

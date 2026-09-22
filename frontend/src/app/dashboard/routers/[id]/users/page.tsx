@@ -237,7 +237,7 @@ export default function RouterUsersPage({ params }: PageProps) {
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await api.generateRouterTickets(routerId, {
+      const res = await api.generateSaaSTickets(routerId, {
         count: Math.min(Math.max(genCount, 1), 1000),
         auth_mode: genAuthMode,
         profile: genProfile,
@@ -248,7 +248,7 @@ export default function RouterUsersPage({ params }: PageProps) {
         price: genPrice,
         comment: genComment.trim(),
       });
-      setActionSuccess(`${res.count || genCount} tickets générés avec succès !`);
+      setActionSuccess(`${res.count || genCount} tickets générés avec succès dans le Cloud !`);
       setShowGenModal(false);
       await loadData();
       setTimeout(() => setActionSuccess(null), 4000);

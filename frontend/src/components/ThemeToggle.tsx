@@ -9,15 +9,36 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     setMounted(true);
-    const isDarkMode =
-      localStorage.getItem("mikroot_theme") === "dark" ||
-      document.documentElement.classList.contains("dark");
-    setIsDark(isDarkMode);
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const applyTheme = (isDarkTheme: boolean) => {
+      setIsDark(isDarkTheme);
+      if (isDarkTheme) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    };
+
+    const saved = localStorage.getItem("mikroot_theme");
+    if (saved === "dark") {
+      applyTheme(true);
+    } else if (saved === "light") {
+      applyTheme(false);
     } else {
-      document.documentElement.classList.remove("dark");
+      // Synchronisation automatique native avec l'OS
+      applyTheme(mediaQuery.matches);
     }
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      const currentSaved = localStorage.getItem("mikroot_theme");
+      if (!currentSaved) {
+        applyTheme(e.matches);
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
   const toggleTheme = () => {

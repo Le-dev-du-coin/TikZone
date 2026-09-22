@@ -133,12 +133,10 @@ class TestMikrootSaaSWorkflow:
         r_resp = self.client.post("/api/routers/create/", {"name": "routeur-cloud", "mikhmon_instance_id": inst_id})
         router_id = r_resp.data["router"]["id"]
 
-        # 1. GET initial : auto-initialisation de l'unique profil par défaut 'default'
+        # 1. GET initial : liste propre initialement vide (aucun profil injecté de force)
         list_resp = self.client.get(f"/api/routers/{router_id}/hotspot/profiles/")
         assert list_resp.status_code == 200
-        assert list_resp.data["count"] == 1
-        assert list_resp.data["results"][0]["name"] == "default"
-        assert list_resp.data["results"][0]["price"] == 100
+        assert list_resp.data["count"] == 0
 
         # 2. POST : Ajout d'un nouveau profil sur mesure
         create_resp = self.client.post(

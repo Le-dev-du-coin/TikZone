@@ -192,7 +192,8 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
             <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="px-4 py-3.5">Ticket / Client</th>
-                <th className="px-4 py-3.5">Forfait / Ticket Pris</th>
+                <th className="px-4 py-3.5">Forfait / Profil</th>
+                <th className="px-4 py-3.5">Prix (FCFA)</th>
                 <th className="px-4 py-3.5">Durée Prévue</th>
                 <th className="px-4 py-3.5">Temps Écoulé</th>
                 <th className="px-4 py-3.5">Temps Restant</th>
@@ -204,13 +205,13 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
               {loading && activeUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-400 font-sans">
+                  <td colSpan={9} className="px-4 py-8 text-center text-slate-400 font-sans">
                     Chargement des sessions en direct...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-400 font-sans">
+                  <td colSpan={9} className="px-4 py-8 text-center text-slate-400 font-sans">
                     Aucun utilisateur actuellement connecté.
                   </td>
                 </tr>
@@ -223,9 +224,13 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3.5 font-sans">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200/60 dark:border-emerald-800/60">
-                        <span>{u.profile || "default"}</span>
-                        {u.price && <span className="text-[10px] text-emerald-600 dark:text-emerald-400">({u.price})</span>}
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
+                        {u.profile || "default"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-black font-mono text-xs border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                        {u.price || "100 FCFA"}
                       </span>
                     </td>
                     <td className="px-4 py-3.5 font-sans text-xs font-semibold text-slate-700 dark:text-slate-300">

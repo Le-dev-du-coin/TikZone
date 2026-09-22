@@ -557,19 +557,9 @@ class RouterGenerateTicketsView(APIView):
 class RouterHotspotProfilesView(APIView):
     """
     Gestion centralisée des forfaits Hotspot Cloud (100% Cloud RADIUS natif).
-    Stocké dans PostgreSQL, garantit la cohérence des prix FCFA et des quotas.
+    Permet de créer, éditer, désactiver (is_active) et supprimer des forfaits.
     """
     permission_classes = [permissions.IsAuthenticated]
-
-    DEFAULT_PROFILE = {
-        "name": "default",
-        "price": 100,
-        "session_timeout": "1h",
-        "rate_limit": "2M/2M",
-        "shared_users": 1,
-        "is_active": True,
-        "comment": "Profil par défaut",
-    }
 
     def get(self, request, router_id):
         from .models import CloudHotspotProfile
@@ -581,11 +571,6 @@ class RouterHotspotProfilesView(APIView):
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
         qs = CloudHotspotProfile.objects.filter(router=router)
-
-        # Initialisation automatique d'un unique profil 'default' si la liste est vide
-        if not qs.exists():
-            CloudHotspotProfile.objects.create(router=router, **self.DEFAULT_PROFILE)
-            qs = CloudHotspotProfile.objects.filter(router=router)
 
         active_only = request.query_params.get("active_only")
         if active_only == "true":
@@ -820,8 +805,11 @@ class RouterSalesReportView(APIView):
         return Response(data)
 
     def delete(self, request, router_id):
-        """Purger tous les tickets et réinitialiser l'historique financier à zéro."""
+        """Purger les tickets et réinitialiser l'historique financier selon la période choisie."""
         from .models import HotspotBatch, HotspotTicket
+        from django.utils import timezone
+        import datetime
+
         try:
             router = get_user_router_or_404(
                 request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
@@ -829,30 +817,36 @@ class RouterSalesReportView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        deleted_tickets = HotspotTicket.objects.filter(router=router).delete()[0]
-        deleted_batches = HotspotBatch.objects.filter(router=router).delete()[0]
+        period = request.query_params.get("period") or request.data.get("period", "all")
+        now = timezone.now()
+        today = now.date()
 
-        # Nettoyage optionnel des vieux utilisateurs sur le MikroTik si en ligne
-        try:
-            from .services.mikrotik import MikrotikService
-            pool = MikrotikService.get_api_connection(router, timeout=2.5)
-            api = pool.get_api()
-            ros_users = api.get_resource("/ip/hotspot/user").get()
-            u_res = api.get_resource("/ip/hotspot/user")
-            for u in ros_users:
-                if u.get("name") not in ["default-trial"]:
-                    try:
-                        u_res.remove(id=u.get("id"))
-                    except Exception:
-                        pass
-            pool.disconnect()
-        except Exception:
-            pass
+        ticket_qs = HotspotTicket.objects.filter(router=router)
+
+        if period == "today":
+            ticket_qs = ticket_qs.filter(created_at__date=today)
+            label = "d'aujourd'hui"
+        elif period == "yesterday":
+            yesterday = today - datetime.timedelta(days=1)
+            ticket_qs = ticket_qs.filter(created_at__date=yesterday)
+            label = "d'hier"
+        elif period == "month":
+            ticket_qs = ticket_qs.filter(created_at__year=now.year, created_at__month=now.month)
+            label = "du mois en cours"
+        elif period == "year":
+            ticket_qs = ticket_qs.filter(created_at__year=now.year)
+            label = f"de l'année {now.year}"
+        else:
+            # "all" : tout vider pour ce routeur
+            HotspotBatch.objects.filter(router=router).delete()
+            label = "complet"
+
+        deleted_tickets = ticket_qs.delete()[0]
 
         return Response({
-            "detail": "Historique financier et tickets réinitialisés avec succès.",
+            "detail": f"Rapport et tickets ({label}) réinitialisés avec succès ({deleted_tickets} ticket(s) supprimé(s)).",
             "deleted_tickets": deleted_tickets,
-            "deleted_batches": deleted_batches,
+            "period": period,
         })
 
 

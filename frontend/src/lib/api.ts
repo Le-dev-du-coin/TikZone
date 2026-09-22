@@ -423,8 +423,8 @@ export const api = {
     return await res.json();
   },
 
-  async resetRouterSalesReport(routerId: string) {
-    const res = await fetch(`${API_BASE}/routers/${routerId}/reports/`, {
+  async resetRouterSalesReport(routerId: string, period = "all") {
+    const res = await fetch(`${API_BASE}/routers/${routerId}/reports/?period=${period}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });

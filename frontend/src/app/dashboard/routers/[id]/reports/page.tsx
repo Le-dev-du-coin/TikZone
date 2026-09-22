@@ -49,6 +49,7 @@ export default function RouterReportsPage({ params }: PageProps) {
 
   // Modal de Réinitialisation / Purge
   const [showResetModal, setShowResetModal] = useState(false);
+  const [resetPeriod, setResetPeriod] = useState<"today" | "yesterday" | "month" | "year" | "all">("today");
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMsg, setResetMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -70,7 +71,7 @@ export default function RouterReportsPage({ params }: PageProps) {
     setResetLoading(true);
     setResetMsg(null);
     try {
-      const res = await api.resetRouterSalesReport(routerId);
+      const res = await api.resetRouterSalesReport(routerId, resetPeriod);
       setResetMsg({ type: "success", text: res.detail || "Rapports et tickets réinitialisés avec succès." });
       await loadData();
       setTimeout(() => {
@@ -337,7 +338,7 @@ export default function RouterReportsPage({ params }: PageProps) {
                 <th className="px-5 py-3.5">Code Ticket</th>
                 <th className="px-5 py-3.5">Lot / Origine</th>
                 <th className="px-5 py-3.5">Profil Forfait</th>
-                <th className="px-5 py-3.5">Montant Encaissé</th>
+                <th className="px-5 py-3.5">Prix / Montant (FCFA)</th>
                 <th className="px-5 py-3.5 text-right">Statut</th>
               </tr>
             </thead>
@@ -415,10 +416,67 @@ export default function RouterReportsPage({ params }: PageProps) {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Êtes-vous sûr de vouloir <strong>vider tous les tickets et l'historique financier</strong> pour ce routeur ?
-              <br /><br />
-              Cette action supprimera tous les tickets de test et remettra les compteurs de vente à <strong>0 FCFA</strong> pour repartir sur une base propre.
+              Sélectionnez la période des données que vous souhaitez supprimer :
             </p>
+
+            {/* Choix de la période de suppression */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setResetPeriod("today")}
+                className={`p-2.5 rounded-xl border text-left transition-all ${
+                  resetPeriod === "today"
+                    ? "border-rose-600 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-bold ring-1 ring-rose-600"
+                    : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                }`}
+              >
+                Aujourd'hui
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetPeriod("yesterday")}
+                className={`p-2.5 rounded-xl border text-left transition-all ${
+                  resetPeriod === "yesterday"
+                    ? "border-rose-600 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-bold ring-1 ring-rose-600"
+                    : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                }`}
+              >
+                Hier
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetPeriod("month")}
+                className={`p-2.5 rounded-xl border text-left transition-all ${
+                  resetPeriod === "month"
+                    ? "border-rose-600 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-bold ring-1 ring-rose-600"
+                    : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                }`}
+              >
+                Mois en cours
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetPeriod("year")}
+                className={`p-2.5 rounded-xl border text-left transition-all ${
+                  resetPeriod === "year"
+                    ? "border-rose-600 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-bold ring-1 ring-rose-600"
+                    : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                }`}
+              >
+                Année en cours
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetPeriod("all")}
+                className={`col-span-2 p-2.5 rounded-xl border text-left transition-all ${
+                  resetPeriod === "all"
+                    ? "border-rose-600 bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-100 font-black ring-2 ring-rose-600"
+                    : "border-slate-200 dark:border-slate-800 text-rose-600 dark:text-rose-400 font-bold hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                }`}
+              >
+                Tout le rapport complet (Remise à zéro totale)
+              </button>
+            </div>
 
             {resetMsg && (
               <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
