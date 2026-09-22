@@ -240,16 +240,18 @@ class VpnCredential(models.Model):
                 f"/ip firewall filter add action=accept chain=input in-interface=tikzone-vpn comment=\"TikZone VPN API\" place-before=0"
             )
 
-        # Si le routeur est configuré en mode Cloud RADIUS (Recommandé)
+        # Configuration Cloud RADIUS TikZone (100% Automatisé Zéro-Clic)
         router_hotspot_type = getattr(self.router, "hotspot_type", Router.HotspotType.RADIUS)
         if router_hotspot_type == Router.HotspotType.RADIUS:
             secret = getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret-2026")
-            assigned_ip = self.assigned_ip or "172.29.88.2"
+            radius_host = endpoint_host
             radius_block = (
-                f"\n\n# === MOTEUR CLOUD RADIUS TIKZONE ===\n"
+                f"\n\n# === MOTEUR CLOUD RADIUS TIKZONE (ZÉRO-CLIC) ===\n"
                 f"/radius remove [find comment=\"TikZone RADIUS\"]\n"
-                f"/radius add service=hotspot address=172.29.88.1 secret=\"{secret}\" src-address={assigned_ip} timeout=2500ms comment=\"TikZone RADIUS\"\n"
-                f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m"
+                f"/radius remove [find comment=\"Mikroot RADIUS\"]\n"
+                f"/radius add service=hotspot address={radius_host} secret=\"{secret}\" authentication-port=1812 accounting-port=1813 timeout=3000ms comment=\"TikZone RADIUS\"\n"
+                f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m login-by=http-chap,http-pap,mac-cookie\n"
+                f"/radius incoming set accept=yes port=3799"
             )
             script += radius_block
 

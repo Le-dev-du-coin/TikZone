@@ -295,11 +295,13 @@ class RadiusEngineService:
         return batch, created
 
     @staticmethod
-    def generate_mikrotik_radius_setup_script(router: Router, secret: str = "tikzone-radius-secret") -> str:
-        """Génère la commande RouterOS pour raccorder le routeur au moteur RADIUS TikZone."""
-        assigned_ip = getattr(router.vpn_credential, "assigned_ip", "172.29.88.2") if hasattr(router, "vpn_credential") else "172.29.88.2"
+    def generate_mikrotik_radius_setup_script(router: Router, secret: str = "tikzone-radius-secret-2026") -> str:
+        """Génère la commande RouterOS pour raccorder le routeur au moteur RADIUS Cloud TikZone."""
+        endpoint_host = getattr(settings, "VPN_SERVER_HOST", "187.7.20.53")
         return (
             f"/radius remove [find comment=\"TikZone RADIUS\"]\n"
-            f"/radius add service=hotspot address=172.29.88.1 secret=\"{secret}\" src-address={assigned_ip} timeout=2500ms comment=\"TikZone RADIUS\"\n"
-            f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=1m\n"
+            f"/radius remove [find comment=\"Mikroot RADIUS\"]\n"
+            f"/radius add service=hotspot address={endpoint_host} secret=\"{secret}\" authentication-port=1812 accounting-port=1813 timeout=3000ms comment=\"TikZone RADIUS\"\n"
+            f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m login-by=http-chap,http-pap,mac-cookie\n"
+            f"/radius incoming set accept=yes port=3799\n"
         )

@@ -92,7 +92,8 @@ export default function RouterProfilesPage({ params }: PageProps) {
   const handleOpenEdit = (p: any) => {
     setEditingProfile(p);
     setName(p.name);
-    setRateLimit(p.rate_limit && p.rate_limit !== "Illimité" ? p.rate_limit : "");
+    const isUnl = !p.rate_limit || p.rate_limit.toLowerCase() === "illimité";
+    setRateLimit(isUnl ? "" : p.rate_limit);
     setSharedUsers(parseInt(p.shared_users) || 1);
     setSessionTimeout(p.session_timeout || "1h");
     setPrice(parseInt(p.price) || 100);
@@ -125,9 +126,10 @@ export default function RouterProfilesPage({ params }: PageProps) {
     setSubmitting(true);
     setErrorMsg(null);
     try {
+      const cleanRate = rateLimit.trim();
       await api.createRouterProfile(routerId, {
         name: name.trim(),
-        rate_limit: rateLimit || "2M/2M",
+        rate_limit: cleanRate ? cleanRate : "Illimité",
         shared_users: sharedUsers,
         session_timeout: sessionTimeout || "1h",
         price: price,
@@ -150,10 +152,11 @@ export default function RouterProfilesPage({ params }: PageProps) {
     setSubmitting(true);
     setErrorMsg(null);
     try {
+      const cleanRate = rateLimit.trim();
       await api.updateRouterProfile(routerId, {
         id: editingProfile.id,
         name: name.trim() || undefined,
-        rate_limit: rateLimit || undefined,
+        rate_limit: cleanRate ? cleanRate : "Illimité",
         shared_users: sharedUsers,
         session_timeout: sessionTimeout || undefined,
         price: price,

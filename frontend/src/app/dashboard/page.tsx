@@ -195,6 +195,20 @@ export default function ClientDashboardPage() {
     return `https://${cleanSub}.tikzone.net/login?user=${encodeURIComponent(userLogin)}`;
   };
 
+  const getSubdomainRouterUrl = (instanceName: string, routerId: string) => {
+    const cleanSub = (instanceName || "").toLowerCase().trim();
+    if (!cleanSub) return `/dashboard/routers/${routerId}`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("mikroot_token") : null;
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname;
+      if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return `/dashboard/routers/${routerId}`;
+      }
+    }
+    return `https://${cleanSub}.tikzone.net/dashboard/routers/${routerId}${tokenParam}`;
+  };
+
   const handleSaveAccess = async (andOpenWhatsApp: boolean = false) => {
     if (!accessModalInstance) return;
     setSavingAccess(true);
@@ -543,14 +557,14 @@ export default function ClientDashboardPage() {
                     </Link>
 
                     {routers.length > 0 ? (
-                      <Link
-                        href={`/dashboard/routers/${routers[0].id}`}
+                      <a
+                        href={getSubdomainRouterUrl(instance.name, routers[0].id)}
                         className="flex-1 lg:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer"
                         title="Ouvrir l'Espace Hotspot de ce routeur"
                       >
                         <Wifi className="w-3.5 h-3.5" />
                         <span>Espace Hotspot</span>
-                      </Link>
+                      </a>
                     ) : (
                       <Link
                         href={`/dashboard/routers/new?space=${instance.id}`}
@@ -640,13 +654,13 @@ export default function ClientDashboardPage() {
 
                             {/* Actions Responsive Layout */}
                             <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                              <Link
-                                href={`/dashboard/routers/${router.id}`}
+                              <a
+                                href={getSubdomainRouterUrl(instance.name, router.id)}
                                 className="col-span-4 sm:flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
                               >
                                 <Wifi className="w-3.5 h-3.5" />
                                 <span>Gérer le Hotspot</span>
-                              </Link>
+                              </a>
 
                               <button
                                 type="button"

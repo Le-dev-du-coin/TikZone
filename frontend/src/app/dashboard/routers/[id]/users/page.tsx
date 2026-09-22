@@ -75,7 +75,7 @@ export default function RouterUsersPage({ params }: PageProps) {
   const [showGenModal, setShowGenModal] = useState(false);
   const [genCount, setGenCount] = useState(20);
   const [genAuthMode, setGenAuthMode] = useState<"single" | "dual">("single");
-  const [genProfile, setGenProfile] = useState("default");
+  const [genProfile, setGenProfile] = useState("");
   const [genTimeLimit, setGenTimeLimit] = useState("3h");
   const [genCodeLength, setGenCodeLength] = useState<4 | 6 | 8>(6);
   const [genCodeFormat, setGenCodeFormat] = useState<"numeric" | "alpha_upper" | "alpha_lower">("numeric");
@@ -94,14 +94,14 @@ export default function RouterUsersPage({ params }: PageProps) {
       // 100% Cloud Hotspot Natif : seuls les tickets Cloud sont gérés
       const [saasRes, profRes] = await Promise.all([
         api.getSaaSTickets(routerId).catch(() => ({ results: [] })),
-        api.getRouterProfiles(routerId).catch(() => ({ results: [] })),
+        api.getRouterProfiles(routerId, { active_only: true }).catch(() => ({ results: [] })),
       ]);
 
       const parsedSaaSTickets = (saasRes.results || []).map((t: any) => ({
         id: t.id,
         name: t.code,
         password: t.password,
-        profile: t.profile || "default",
+        profile: t.profile || "",
         comment: t.comment || "Ticket Cloud Hotspot",
         uptime: t.uptime_used_seconds ? `${Math.floor(t.uptime_used_seconds / 60)}m` : "0s",
         bytes_in: t.bytes_in,
@@ -112,7 +112,10 @@ export default function RouterUsersPage({ params }: PageProps) {
         time_limit: t.time_limit,
       }));
 
-      const parsedProfiles = profRes.results || [];
+      // Suppression stricte et totale de tout profil "default" fantôme
+      const parsedProfiles = (profRes.results || []).filter(
+        (p: any) => p.name && p.name.trim().toLowerCase() !== "default"
+      );
 
       setUsers(parsedSaaSTickets);
       setProfiles(parsedProfiles);
@@ -213,7 +216,7 @@ export default function RouterUsersPage({ params }: PageProps) {
     const activeProf =
       targetProfileName && targetProfileName !== "ALL"
         ? targetProfileName
-        : profiles[0]?.name || "default";
+        : profiles[0]?.name || "";
 
     setGenProfile(activeProf);
 
@@ -294,7 +297,7 @@ export default function RouterUsersPage({ params }: PageProps) {
               <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               <span>
                 {viewMode === "CARDS"
-                  ? "Tickets & Vouchers Hotspot"
+                  ? "Tickets Hotspot"
                   : selectedProfile === "ALL"
                   ? "Tous les Tickets (Tous Profils)"
                   : `Tickets du Profil : ${selectedProfile}`}
@@ -329,21 +332,13 @@ export default function RouterUsersPage({ params }: PageProps) {
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
           </button>
 
-          <Link
-            href={`/dashboard/routers/${routerId}/tickets`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span>Générateur Avancé</span>
-          </Link>
-
           <button
             type="button"
             onClick={() => handleOpenGenerateModal()}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>+ Générer des Tickets</span>
+            <span>Générer des Tickets</span>
           </button>
         </div>
       </div>

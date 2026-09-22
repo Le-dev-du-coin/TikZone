@@ -37,7 +37,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = async () => {
-    const savedToken = localStorage.getItem("mikroot_token");
+    if (typeof window !== "undefined") {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get("token");
+        if (urlToken) {
+          localStorage.setItem("mikroot_token", urlToken);
+          urlParams.delete("token");
+          const newSearch = urlParams.toString();
+          const cleanUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
+      } catch {}
+    }
+
+    const savedToken = typeof window !== "undefined" ? localStorage.getItem("mikroot_token") : null;
     if (!savedToken) {
       setUser(null);
       setToken(null);

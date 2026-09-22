@@ -570,6 +570,9 @@ class RouterHotspotProfilesView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Suppression définitive de tout profil "default" résiduel (pur Cloud natif)
+        CloudHotspotProfile.objects.filter(router=router, name__iexact="default").delete()
+
         qs = CloudHotspotProfile.objects.filter(router=router)
 
         active_only = request.query_params.get("active_only")
@@ -612,7 +615,9 @@ class RouterHotspotProfilesView(APIView):
             return Response({"detail": f"Un forfait nommé '{name}' existe déjà."}, status=status.HTTP_400_BAD_REQUEST)
 
         price = int(request.data.get("price", 100))
-        rate_limit = request.data.get("rate_limit", "2M/2M")
+        raw_rate_limit = request.data.get("rate_limit", "2M/2M")
+        rl = str(raw_rate_limit).strip()
+        rate_limit = rl if (rl and rl.lower() != "illimité") else "Illimité"
         session_timeout = request.data.get("session_timeout", "1h")
         shared_users = int(request.data.get("shared_users", 1))
         raw_active = request.data.get("is_active", request.data.get("enabled", True))
@@ -672,7 +677,8 @@ class RouterHotspotProfilesView(APIView):
             profile.price = int(request.data["price"])
 
         if "rate_limit" in request.data:
-            profile.rate_limit = request.data["rate_limit"]
+            rl = str(request.data["rate_limit"]).strip()
+            profile.rate_limit = rl if (rl and rl.lower() != "illimité") else "Illimité"
 
         if "session_timeout" in request.data:
             profile.session_timeout = request.data["session_timeout"]
@@ -1117,10 +1123,11 @@ class RouterRadiusSetupScriptView(APIView):
 
         secret = getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret-2026")
         script = RadiusEngineService.generate_mikrotik_radius_setup_script(router, secret=secret)
+        radius_host = getattr(settings, "VPN_SERVER_HOST", "187.7.20.53")
         return Response({
             "router_id": str(router.id),
             "router_name": router.name,
-            "radius_server_ip": "172.29.88.1",
+            "radius_server_ip": radius_host,
             "radius_auth_port": 1812,
             "radius_acct_port": 1813,
             "script": script,
