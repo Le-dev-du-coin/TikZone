@@ -449,6 +449,43 @@ export const api = {
     document.body.removeChild(a);
   },
 
+  async downloadTicketsPdf(routerId: string, profile?: string, ids?: string[]) {
+    let url = `${API_BASE}/routers/${routerId}/tickets/pdf/?`;
+    const params = new URLSearchParams();
+    if (profile) params.set("profile", profile);
+    if (ids && ids.length > 0) params.set("ids", ids.join(","));
+    url += params.toString();
+
+    const res = await fetch(url, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Erreur de génération PDF" }));
+      throw new Error(err.detail || "Erreur de génération PDF Chromium");
+    }
+
+    let filename = res.headers.get("X-Filename");
+    if (!filename) {
+      const disp = res.headers.get("Content-Disposition");
+      if (disp && disp.includes("filename=")) {
+        filename = disp.split("filename=")[1].replace(/["']/g, "").trim();
+      }
+    }
+    if (!filename) {
+      filename = `TikZone_Tickets_${new Date().toISOString().slice(0, 10)}.pdf`;
+    }
+
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(blobUrl);
+    document.body.removeChild(a);
+  },
+
   async getRouterLogs(routerId: string, limit = 50) {
     const res = await fetch(`${API_BASE}/routers/${routerId}/logs/?limit=${limit}`, {
       headers: getAuthHeaders(),

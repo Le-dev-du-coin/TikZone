@@ -142,3 +142,157 @@ def generate_sales_report_pdf(router: Router, report_data: Dict[str, Any]) -> by
         logger.warning(f"Chromium Playwright non disponible ou erreur ({e}). Fallback HTML vers bytes.")
         # Fallback de sécurité : renvoie le contenu HTML encodé
         return html_content.encode("utf-8")
+
+
+def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") -> bytes:
+    """
+    Génère une planche de tickets A4 découpables haute fidélité via Chromium (Playwright).
+    20 tickets par page A4 (4 colonnes x 5 lignes), bordures nettes, prêt pour impression thermique ou découpage.
+    """
+    hotspot_title = (router.hotspot_name or router.name or "TIKZONE HOTSPOT").strip().upper()
+
+    pages_html = ""
+    # Découpage par lots de 20 tickets par page A4
+    chunk_size = 20
+    chunks = [tickets[i:i + chunk_size] for i in range(0, len(tickets), chunk_size)]
+    if not chunks:
+        chunks = [[]]
+
+    global_idx = 1
+    for chunk_idx, chunk in enumerate(chunks):
+        cards_html = ""
+        for t in chunk:
+            code = getattr(t, "code", None) or (t.get("code") if isinstance(t, dict) else "-")
+            password = getattr(t, "password", None) or (t.get("password") if isinstance(t, dict) else code)
+            t_price = getattr(t, "price", None) or (t.get("price") if isinstance(t, dict) else 100)
+            t_limit = getattr(t, "time_limit", None) or (t.get("time_limit") if isinstance(t, dict) else None)
+            if not t_limit:
+                t_limit = getattr(t, "profile_name", None) or (t.get("profile") if isinstance(t, dict) else "3h")
+
+            if password and password != code:
+                body_content = f"""
+                <div style="background: #f8fafc; border: 1.2px solid #0f172a; border-radius: 4px; padding: 4px; margin: 3px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 8px; font-weight: bold;">
+                        <span style="color: #64748b; text-transform: uppercase;">Utilisateur :</span>
+                        <span style="font-family: monospace; font-weight: 900; color: #0f172a; font-size: 11px;">{code}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 8px; font-weight: bold; border-top: 1px solid #cbd5e1; margin-top: 2px; padding-top: 2px;">
+                        <span style="color: #64748b; text-transform: uppercase;">Mot de passe :</span>
+                        <span style="font-family: monospace; font-weight: 900; color: #e11d48; font-size: 11px;">{password}</span>
+                    </div>
+                </div>
+                """
+            else:
+                body_content = f"""
+                <div style="text-align: center; margin: 3px 0;">
+                    <div style="font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 2px;">Code Ticket (PIN)</div>
+                    <div style="font-family: monospace; font-weight: 900; font-size: 14px; letter-spacing: 2px; background: #f8fafc; border: 1.5px solid #0f172a; border-radius: 4px; padding: 3px 6px; display: inline-block; width: 92%;">
+                        {code}
+                    </div>
+                </div>
+                """
+
+            cards_html += f"""
+            <div class="voucher-card">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.3px;">
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;">{hotspot_title}</span>
+                        <span style="font-size: 9px; color: #475569;">[{global_idx}]</span>
+                    </div>
+                    <div style="border-bottom: 1.5px solid #0f172a; margin: 2px 0 3px 0;"></div>
+                </div>
+
+                {body_content}
+
+                <div style="border: 1.2px solid #0f172a; border-radius: 4px; padding: 2px; text-align: center; font-size: 9px; font-weight: 900; text-transform: uppercase; background: #f8fafc; margin-top: 2px;">
+                    Pass {t_limit} — {int(t_price)} FCFA
+                </div>
+            </div>
+            """
+            global_idx += 1
+
+        is_last = chunk_idx == len(chunks) - 1
+        page_break = "page-break-after: always;" if not is_last else ""
+        pages_html += f"""
+        <div class="sheet" style="{page_break}">
+            <div class="tickets-grid">
+                {cards_html}
+            </div>
+        </div>
+        """
+
+    full_html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Tickets Hotspot - {hotspot_title}</title>
+<style>
+  @page {{
+    size: A4 portrait;
+    margin: 5mm;
+  }}
+  * {{
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }}
+  body {{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #ffffff;
+    color: #0f172a;
+  }}
+  .sheet {{
+    width: 100%;
+    min-height: 280mm;
+    box-sizing: border-box;
+    background: #ffffff;
+  }}
+  .tickets-grid {{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(50mm, auto);
+    gap: 4mm;
+    width: 100%;
+  }}
+  .voucher-card {{
+    border: 1.5px solid #0f172a;
+    border-radius: 6px;
+    padding: 5px 7px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 51mm;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }}
+</style>
+</head>
+<body>
+  {pages_html}
+</body>
+</html>
+"""
+
+    # Rendu binaire Chromium via Playwright
+    try:
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"])
+            page = browser.new_page()
+            page.set_content(full_html, wait_until="load")
+            pdf_bytes = page.pdf(
+                format="A4",
+                print_background=True,
+                margin={"top": "5mm", "bottom": "5mm", "left": "5mm", "right": "5mm"},
+            )
+            browser.close()
+            return pdf_bytes
+    except Exception as e:
+        logger.warning(f"Playwright Chromium non disponible pour les tickets ({e}). Fallback HTML.")
+        return full_html.encode("utf-8")
+

@@ -905,6 +905,74 @@ class RouterSalesReportPdfView(APIView):
         return response
 
 
+class RouterTicketsPdfView(APIView):
+    """
+    Génération du PDF des tickets Hotspot via Chromium (Playwright).
+    Nom de fichier professionnel et unique avec composante aléatoire :
+    TikZone_Tickets_{zone}_{profile}_{date}_{random}.pdf
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, router_id):
+        import secrets
+        from django.db import models
+        from django.http import HttpResponse
+        from django.utils.text import slugify
+        from django.utils import timezone
+        from .services.pdf_service import generate_tickets_pdf
+        from .models import HotspotTicket, CloudHotspotProfile
+
+        try:
+            router = get_user_router_or_404(
+                request.user, router_id, select_related=["vpn_credential", "mikhmon_instance"]
+            )
+        except Router.DoesNotExist:
+            return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        qs = HotspotTicket.objects.filter(router=router).select_related("batch")
+
+        # Filtrage optionnel par liste d'IDs
+        raw_ids = request.query_params.get("ids", "").strip()
+        if raw_ids:
+            id_list = [i.strip() for i in raw_ids.split(",") if i.strip()]
+            qs = qs.filter(id__in=id_list)
+
+        # Filtrage optionnel par profil
+        profile_param = request.query_params.get("profile", "").strip()
+        prof_label = "Tous-Profils"
+        if profile_param and profile_param != "ALL":
+            matching_prof = CloudHotspotProfile.objects.filter(router=router, name__iexact=profile_param).first()
+            if matching_prof:
+                prof_label = matching_prof.name
+                qs = qs.filter(
+                    models.Q(profile_name__iexact=matching_prof.name) |
+                    models.Q(time_limit_seconds=matching_prof.session_timeout_seconds)
+                )
+            else:
+                prof_label = profile_param
+                qs = qs.filter(profile_name__iexact=profile_param)
+
+        tickets = list(qs[:1000])
+        if not tickets:
+            return Response({"detail": "Aucun ticket trouvé pour cette sélection."}, status=status.HTTP_404_NOT_FOUND)
+
+        pdf_bytes = generate_tickets_pdf(router, tickets, profile_name=prof_label)
+
+        # Nommage professionnel et unique avec composante aléatoire
+        safe_zone = slugify(router.hotspot_name or router.name or "Hotspot").upper().replace("-", "_")
+        safe_prof = slugify(prof_label).upper().replace("-", "_")
+        date_str = timezone.now().strftime("%Y%m%d_%H%M")
+        random_suffix = secrets.token_hex(2).upper()
+
+        filename = f"TikZone_Tickets_{safe_zone}_{safe_prof}_{date_str}_{random_suffix}.pdf"
+
+        content_type = "application/pdf" if pdf_bytes.startswith(b"%PDF") else "text/html"
+        response = HttpResponse(pdf_bytes, content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response["X-Filename"] = filename
+        return response
+
+
 class RouterLogsView(APIView):
     """Récupère le journal d'activité (Hotspot Log & System Log) en temps réel."""
     permission_classes = [permissions.IsAuthenticated]

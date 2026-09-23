@@ -10,6 +10,7 @@ import {
   Download,
   ExternalLink,
   Layers,
+  Loader2,
   Plus,
   Printer,
   RefreshCw,
@@ -99,6 +100,7 @@ export default function RouterUsersPage({ params }: PageProps) {
     return null;
   });
   const [printTickets, setPrintTickets] = useState<any[]>([]);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const handlePrintTickets = (ticketList: any[]) => {
     if (!ticketList || ticketList.length === 0) {
@@ -106,6 +108,22 @@ export default function RouterUsersPage({ params }: PageProps) {
       return;
     }
     setPrintTickets(ticketList);
+  };
+
+  const handleDownloadPdf = async (targetProfile?: string) => {
+    setIsDownloadingPdf(true);
+    setActionError(null);
+    try {
+      const prof = targetProfile || (selectedProfile !== "ALL" ? selectedProfile : undefined);
+      const ticketIds = printTickets.map((t) => t.id).filter(Boolean);
+      await api.downloadTicketsPdf(routerId, prof, ticketIds.length > 0 ? ticketIds : undefined);
+      setActionSuccess("Fichier PDF vectoriel généré et téléchargé avec succès !");
+      setTimeout(() => setActionSuccess(null), 3500);
+    } catch (err: any) {
+      setActionError("Erreur de téléchargement PDF : " + (err.message || "Échec serveur"));
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   // Notifications
@@ -999,11 +1017,26 @@ export default function RouterUsersPage({ params }: PageProps) {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => handleDownloadPdf()}
+                  disabled={isDownloadingPdf}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
+                  title="Génère un vrai PDF vectoriel A4 via Chromium Playwright"
+                >
+                  {isDownloadingPdf ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{isDownloadingPdf ? "Génération PDF..." : "Télécharger PDF (Chromium)"}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all"
+                  title="Imprimer directement via la boîte de dialogue du navigateur"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Imprimer maintenant</span>
+                  <span className="hidden sm:inline">Navigateur</span>
                 </button>
                 <button
                   type="button"
