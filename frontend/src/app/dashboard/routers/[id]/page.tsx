@@ -8,6 +8,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Coins,
   Copy,
   Cpu,
   ExternalLink,
@@ -740,7 +741,35 @@ export default function RouterDashboardPage({ params }: PageProps) {
             </div>
           </Link>
 
-          {/* 3. Carte Ambre Vibrante : Profils Hotspot & Forfaits */}
+          {/* 3. Carte Indigo/Violette Vibrante : Recette Journalière (Aujourd'hui) */}
+          <Link
+            href={`/dashboard/routers/${routerId}/reports`}
+            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col justify-between group cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-bold text-indigo-100/90">Recette du Jour</span>
+              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Coins className="w-4 h-4 text-white" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                {typeof hotspot?.today_revenue === "number" ? (
+                  `${hotspot.today_revenue.toLocaleString("fr-FR")} F`
+                ) : loading ? (
+                  <span className="inline-block h-8 w-16 bg-white/20 rounded animate-pulse" />
+                ) : (
+                  "0 FCFA"
+                )}
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-indigo-200 mt-1 flex items-center gap-1 font-medium">
+                <span>Ventes encaissées</span>
+                <span className="text-white/60">→</span>
+              </p>
+            </div>
+          </Link>
+
+          {/* 4. Carte Ambre Vibrante : Profils Hotspot & Forfaits */}
           <Link
             href={`/dashboard/routers/${routerId}/profiles`}
             className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col justify-between text-left group cursor-pointer"
@@ -760,32 +789,6 @@ export default function RouterDashboardPage({ params }: PageProps) {
               </p>
             </div>
           </Link>
-
-          {/* 4. Carte Rose/Rouge Vibrante : ⚡ Générer un Lot */}
-          <button
-            type="button"
-            onClick={() => {
-              setActionSuccess(null);
-              setActionError(null);
-              setShowGenModal(true);
-            }}
-            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-rose-600 to-pink-600 text-white shadow-lg shadow-rose-500/20 hover:shadow-xl hover:shadow-rose-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col justify-between text-left group cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] sm:text-xs font-bold text-rose-100/90">Impression</span>
-              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Zap className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="text-sm sm:text-base font-black text-white leading-tight">
-                ⚡ Générer Lot
-              </div>
-              <p className="text-[10px] sm:text-[11px] text-rose-100/80 mt-0.5">
-                Coupons par lot
-              </p>
-            </div>
-          </button>
         </div>
       </div>
 
@@ -872,8 +875,8 @@ export default function RouterDashboardPage({ params }: PageProps) {
 
       {/* MODALE 1: AJOUTER UN UTILISATEUR */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto py-8 sm:py-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 m-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-black text-slate-900 dark:text-white text-base">
                 Créer un Utilisateur Hotspot
@@ -987,8 +990,8 @@ export default function RouterDashboardPage({ params }: PageProps) {
 
       {/* MODALE 2: GÉNÉRER UN LOT DE TICKETS */}
       {showGenModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto py-8 sm:py-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 m-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-black text-slate-900 dark:text-white text-base">
                 Générer un Lot de Tickets Hotspot

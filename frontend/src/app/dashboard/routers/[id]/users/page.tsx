@@ -656,15 +656,15 @@ export default function RouterUsersPage({ params }: PageProps) {
 
           {/* BARRE FLOTTANTE D'ACTION POUR LA SÉLECTION MULTIPLE */}
           {selectedIds.size > 0 && (
-            <div className="p-3.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-2xl flex items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2">
+            <div className="p-3.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center gap-2 text-xs font-bold text-blue-900 dark:text-blue-200">
-                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px]">
+                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] shrink-0">
                   {selectedIds.size}
                 </span>
                 <span>ticket(s) sélectionné(s) sur ce tableau</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedIds(new Set())}
@@ -676,7 +676,7 @@ export default function RouterUsersPage({ params }: PageProps) {
                 <button
                   type="button"
                   onClick={() => handlePrintTickets(filteredUsers.filter((u) => selectedIds.has(u.id)))}
-                  className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Imprimer ({selectedIds.size})</span>
@@ -686,10 +686,10 @@ export default function RouterUsersPage({ params }: PageProps) {
                   type="button"
                   onClick={handleDeleteSelected}
                   disabled={isDeleting}
-                  className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-sm shadow-rose-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-sm shadow-rose-600/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isDeleting ? "Suppression..." : `Supprimer les ${selectedIds.size} tickets`}</span>
+                  <span>{isDeleting ? "Suppression..." : `Supprimer (${selectedIds.size})`}</span>
                 </button>
               </div>
             </div>
@@ -829,8 +829,8 @@ export default function RouterUsersPage({ params }: PageProps) {
 
       {/* MODAL GÉNÉRATEUR DE TICKETS PAR LOT */}
       {showGenModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 my-8">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto py-8 sm:py-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 m-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600">
@@ -1291,26 +1291,36 @@ export default function RouterUsersPage({ params }: PageProps) {
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs p-4 flex flex-col items-center justify-start print:p-0 print:m-0 print:bg-transparent print:static print:overflow-visible">
           <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-auto print:border-none print:shadow-none print:p-0 print:max-w-none print:m-0 print:rounded-none">
             {/* Header de la modale masqué à l'impression */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 no-print">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600">
-                  <Printer className="w-5 h-5" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800 no-print">
+              <div className="flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 shrink-0">
+                    <Printer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                      Impression des Tickets Hotspot ({printTickets.length})
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-slate-500">
+                      Prêt pour impression thermique ou format A4 découpable.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">
-                    Impression des Tickets Hotspot ({printTickets.length})
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Prêt pour impression thermique ou format A4 découpable.
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setPrintTickets([])}
+                  className="sm:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleDownloadPdf()}
                   disabled={isDownloadingPdf}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                   title="Télécharger le fichier PDF au format A4"
                 >
                   {isDownloadingPdf ? (
@@ -1323,7 +1333,7 @@ export default function RouterUsersPage({ params }: PageProps) {
                 <button
                   type="button"
                   onClick={() => setPrintTickets([])}
-                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="hidden sm:block p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>

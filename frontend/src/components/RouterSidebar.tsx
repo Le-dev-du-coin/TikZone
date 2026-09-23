@@ -21,7 +21,7 @@ import {
   Wifi,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
 
@@ -48,6 +48,21 @@ export default function RouterSidebar({
   const { user } = useAuth();
   const pathname = usePathname();
   const [hotspotOpen, setHotspotOpen] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    checkDesktop();
+    window.addEventListener("resize", checkDesktop);
+    return () => window.removeEventListener("resize", checkDesktop);
+  }, []);
+
+  // Le mode replié (icônes seules) n'est actif QUE sur écran Desktop (>= 768px).
+  // Sur mobile, le tiroir s'ouvre TOUJOURS avec 100% de ses libellés et titres.
+  const effectiveCollapsed = isCollapsed && isDesktop;
+
   const displayName = hotspotName || routerName || "Routeur Hotspot";
 
   const basePath = `/dashboard/routers/${routerId}`;
@@ -119,11 +134,11 @@ export default function RouterSidebar({
       <aside
         className={`fixed top-0 bottom-0 left-0 z-50 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col border-r border-slate-200 dark:border-slate-800 transition-all duration-200 md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        } ${isCollapsed ? "md:w-20 w-72" : "w-72"}`}
+        } ${effectiveCollapsed ? "w-20" : "w-72"}`}
       >
         {/* Router Header Badge */}
-        <div className={`p-4 border-b border-slate-100 dark:border-slate-800 flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
-          <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? "hidden" : "flex-1"}`}>
+        <div className={`p-4 border-b border-slate-100 dark:border-slate-800 flex items-center ${effectiveCollapsed ? "justify-center" : "justify-between"}`}>
+          <div className={`flex items-center gap-2.5 min-w-0 ${effectiveCollapsed ? "hidden" : "flex-1"}`}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 shrink-0">
               <Wifi className="w-4 h-4" />
             </div>
@@ -144,13 +159,13 @@ export default function RouterSidebar({
                 type="button"
                 onClick={onToggleCollapse}
                 className="hidden md:flex p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title={isCollapsed ? "Agrandir la barre latérale" : "Réduire la barre latérale (icônes seules)"}
+                title={effectiveCollapsed ? "Agrandir la barre latérale" : "Réduire la barre latérale (icônes seules)"}
               >
-                {isCollapsed ? <PanelLeftOpen className="w-5 h-5 text-blue-600" /> : <PanelLeftClose className="w-5 h-5" />}
+                {effectiveCollapsed ? <PanelLeftOpen className="w-5 h-5 text-blue-600" /> : <PanelLeftClose className="w-5 h-5" />}
               </button>
             )}
 
-            {!isCollapsed && <ThemeToggle />}
+            {!effectiveCollapsed && <ThemeToggle />}
 
             <button
               onClick={onClose}
@@ -163,24 +178,24 @@ export default function RouterSidebar({
 
         {/* Back to Global Hub (uniquement pour les techniciens / propriétaires, masqué pour le gérant confiné) */}
         {user?.role !== "CLIENT_MANAGER" && (
-          <div className={`p-3 ${isCollapsed ? "flex justify-center" : ""}`}>
+          <div className={`p-3 ${effectiveCollapsed ? "flex justify-center" : ""}`}>
             <Link
               href="/dashboard"
               onClick={onClose}
               title="Retour au Hub Principal TikZone"
               className={`flex items-center gap-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors group cursor-pointer ${
-                isCollapsed ? "p-2.5 justify-center" : "px-3 py-2"
+                effectiveCollapsed ? "p-2.5 justify-center" : "px-3 py-2"
               }`}
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform shrink-0" />
-              {!isCollapsed && <span>← Retour au Hub</span>}
+              {!effectiveCollapsed && <span>← Retour au Hub</span>}
             </Link>
           </div>
         )}
 
         {/* Navigation List */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          {!isCollapsed && (
+          {!effectiveCollapsed && (
             <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 py-1.5">
               Gestion Hotspot
             </div>
@@ -188,7 +203,7 @@ export default function RouterSidebar({
 
           {navItems.map((item, idx) => {
             if (item.isGroup && item.children) {
-              if (isCollapsed) {
+              if (effectiveCollapsed) {
                 // En mode replié, afficher directement les icônes enfants pour accès direct en 1-clic
                 return (
                   <div key={idx} className="space-y-1 py-1 border-y border-slate-100 dark:border-slate-800/80">
@@ -270,7 +285,7 @@ export default function RouterSidebar({
                 onClick={onClose}
                 title={item.label}
                 className={`flex items-center gap-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  isCollapsed ? "p-2.5 justify-center" : "px-3 py-2.5"
+                  effectiveCollapsed ? "p-2.5 justify-center" : "px-3 py-2.5"
                 } ${
                   isActive
                     ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
@@ -278,7 +293,7 @@ export default function RouterSidebar({
                 }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-slate-400"}`} />
-                {!isCollapsed && <span>{item.label}</span>}
+                {!effectiveCollapsed && <span>{item.label}</span>}
               </Link>
             );
           })}
@@ -292,11 +307,11 @@ export default function RouterSidebar({
             rel="noopener noreferrer"
             title="Support Technique WhatsApp"
             className={`flex items-center gap-2 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 transition-colors ${
-              isCollapsed ? "p-2.5 justify-center" : "px-3 py-2"
+              effectiveCollapsed ? "p-2.5 justify-center" : "px-3 py-2"
             }`}
           >
             <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
-            {!isCollapsed && <span>Support WhatsApp</span>}
+            {!effectiveCollapsed && <span>Support WhatsApp</span>}
           </a>
         </div>
       </aside>

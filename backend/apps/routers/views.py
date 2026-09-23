@@ -387,6 +387,19 @@ class RouterHotspotOverviewView(APIView):
         profiles_count = CloudHotspotProfile.objects.filter(router=router, is_active=True).count()
 
         now = timezone.now()
+        today = now.date()
+
+        # Recette journalière des ventes du jour (tickets consommés ou actifs créés/activés aujourd'hui)
+        today_sold_filter = models.Q(first_login_at__date=today) | (
+            models.Q(first_login_at__isnull=True)
+            & models.Q(created_at__date=today)
+            & models.Q(status__in=[HotspotTicket.Status.ACTIVE, HotspotTicket.Status.EXPIRED])
+        )
+        today_revenue = int(
+            HotspotTicket.objects.filter(router=router).filter(today_sold_filter).aggregate(s=models.Sum("price"))["s"]
+            or 0
+        )
+
         # 1. Purge et mise à jour des tickets expirés en base
         expired_candidates = HotspotTicket.objects.filter(
             router=router, status=HotspotTicket.Status.ACTIVE
@@ -510,6 +523,7 @@ class RouterHotspotOverviewView(APIView):
             "active_count": len(active_list),
             "total_users_count": total_users_count,
             "profiles_count": profiles_count,
+            "today_revenue": today_revenue,
             "active_users": active_list,
         })
 
