@@ -161,8 +161,8 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
     hotspot_title = (router.hotspot_name or router.name or "TIKZONE HOTSPOT").strip().upper()
 
     pages_html = ""
-    # Découpage par lots de 24 tickets par page A4 (4 colonnes x 6 lignes)
-    chunk_size = 24
+    # Découpage par lots de 28 tickets par page A4 (4 colonnes x 7 lignes)
+    chunk_size = 28
     chunks = [tickets[i:i + chunk_size] for i in range(0, len(tickets), chunk_size)]
     if not chunks:
         chunks = [[]]
@@ -194,22 +194,22 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
 
             if password and password != code:
                 body_content = f"""
-                <div style="background: #f8fafc; border: 1.2px solid #0f172a; border-radius: 4px; padding: 3px 5px; margin: auto 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: bold;">
+                <div style="background: #f8fafc; border: 1.2px solid #0f172a; border-radius: 4px; padding: 2px 4px; margin: 1.5mm 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 7.5px; font-weight: bold;">
                         <span style="color: #64748b; text-transform: uppercase;">Utilisateur :</span>
-                        <span style="font-family: monospace; font-weight: 900; color: #0f172a; font-size: 11px;">{code}</span>
+                        <span style="font-family: monospace; font-weight: 900; color: #0f172a; font-size: 10.5px;">{code}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: bold; border-top: 1px solid #cbd5e1; margin-top: 2px; padding-top: 2px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 7.5px; font-weight: bold; border-top: 1px solid #cbd5e1; margin-top: 1.5px; padding-top: 1.5px;">
                         <span style="color: #64748b; text-transform: uppercase;">Mot de passe :</span>
-                        <span style="font-family: monospace; font-weight: 900; color: #e11d48; font-size: 11px;">{password}</span>
+                        <span style="font-family: monospace; font-weight: 900; color: #e11d48; font-size: 10.5px;">{password}</span>
                     </div>
                 </div>
                 """
             else:
                 body_content = f"""
-                <div style="text-align: center; margin: auto 0; padding: 2px 0;">
-                    <div style="font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; margin-bottom: 2px;">Code Ticket (PIN)</div>
-                    <div style="font-family: monospace; font-weight: 900; font-size: 13.5px; letter-spacing: 2px; background: #f8fafc; border: 1.5px solid #0f172a; border-radius: 4px; padding: 2px 6px; display: inline-block; width: 92%;">
+                <div style="text-align: center; margin: 1mm 0 1.5mm 0;">
+                    <div style="font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; margin-bottom: 1.5px;">Code Ticket (PIN)</div>
+                    <div style="font-family: monospace; font-weight: 900; font-size: 13px; letter-spacing: 1.5px; background: #f8fafc; border: 1.4px solid #0f172a; border-radius: 4px; padding: 1.5px 4px; display: inline-block; width: 94%;">
                         {code}
                     </div>
                 </div>
@@ -218,16 +218,16 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
             cards_html += f"""
             <div class="voucher-card">
                 <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.2px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.2px;">
                         <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;">{hotspot_title}</span>
-                        <span style="font-size: 9.5px; font-weight: 700; color: #0f172a;">[{global_idx}]</span>
+                        <span style="font-size: 8.5px; font-weight: 700; color: #0f172a;">[{global_idx}]</span>
                     </div>
-                    <div style="border-bottom: 1.5px solid #0f172a; margin: 2px 0 3px 0;"></div>
+                    <div style="border-bottom: 1.2px solid #0f172a; margin: 1.5px 0 2px 0;"></div>
                 </div>
 
                 {body_content}
 
-                <div style="border: 1.5px solid #0f172a; border-radius: 4px; padding: 2px; text-align: center; font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.2px; background: #f8fafc; margin-top: auto;">
+                <div style="border: 1.2px solid #0f172a; border-radius: 4px; padding: 1.5px 2px; text-align: center; font-size: 8.5px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.2px; background: #f8fafc; margin-top: auto;">
                     Pass {clean_limit} — {int(t_price)} FCFA
                 </div>
             </div>
@@ -274,18 +274,18 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
   .tickets-grid {{
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 3mm;
+    gap: 2.5mm;
     width: 100%;
   }}
   .voucher-card {{
-    border: 1.5px solid #0f172a;
-    border-radius: 6px;
-    padding: 6px 8px;
+    border: 1.4px solid #0f172a;
+    border-radius: 5px;
+    padding: 3.5px 6px;
     background: #ffffff;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    height: 35mm;
+    height: 27mm;
     box-sizing: border-box;
     page-break-inside: avoid;
     break-inside: avoid;

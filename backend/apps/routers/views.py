@@ -989,6 +989,8 @@ class RouterSalesReportPdfView(APIView):
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'inline; filename="{filename}"'
+        response["X-Filename"] = filename
+        response["Access-Control-Expose-Headers"] = "Content-Disposition, X-Filename"
         return response
 
 
@@ -1043,6 +1045,14 @@ class RouterTicketsPdfView(APIView):
         if not tickets:
             return Response({"detail": "Aucun ticket trouvé pour cette sélection."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Si prof_label est générique, vérifier si tous les tickets partagent le même profil
+        if prof_label in ["Tous-Profils", "ALL", ""]:
+            distinct_profs = {getattr(t, "profile_name", None) or (t.get("profile") if isinstance(t, dict) else None) for t in tickets}
+            distinct_profs.discard(None)
+            distinct_profs.discard("")
+            if len(distinct_profs) == 1:
+                prof_label = list(distinct_profs)[0]
+
         try:
             pdf_bytes = generate_tickets_pdf(router, tickets, profile_name=prof_label)
         except Exception as e:
@@ -1060,17 +1070,18 @@ class RouterTicketsPdfView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # Nommage professionnel et unique avec composante aléatoire
-        safe_zone = slugify(router.hotspot_name or router.name or "Hotspot").upper().replace("-", "_")
-        safe_prof = slugify(prof_label).upper().replace("-", "_")
-        date_str = timezone.now().strftime("%Y%m%d_%H%M")
-        random_suffix = secrets.token_hex(2).upper()
+        # Nommage avec profil clair et date du jour
+        safe_prof = slugify(prof_label).replace("-", "_")
+        if not safe_prof or safe_prof == "tous_profils":
+            safe_prof = "Tickets"
+        date_str = timezone.now().strftime("%Y-%m-%d")
 
-        filename = f"TikZone_Tickets_{safe_zone}_{safe_prof}_{date_str}_{random_suffix}.pdf"
+        filename = f"TikZone_Tickets_{safe_prof}_{date_str}.pdf"
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         response["X-Filename"] = filename
+        response["Access-Control-Expose-Headers"] = "Content-Disposition, X-Filename"
         return response
 
 

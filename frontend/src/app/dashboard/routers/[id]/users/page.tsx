@@ -154,7 +154,16 @@ export default function RouterUsersPage({ params }: PageProps) {
     setIsDownloadingPdf(true);
     setActionError(null);
     try {
-      const prof = targetProfile || (selectedProfile !== "ALL" ? selectedProfile : undefined);
+      const prof =
+        targetProfile ||
+        (selectedProfile !== "ALL"
+          ? selectedProfile
+          : printTickets.length > 0 &&
+            printTickets.every(
+              (t) => (t.profile || t.time_limit) === (printTickets[0].profile || printTickets[0].time_limit)
+            )
+          ? printTickets[0].profile || printTickets[0].time_limit
+          : undefined);
       const ticketIds = printTickets.map((t) => t.id).filter(Boolean);
       await api.downloadTicketsPdf(routerId, prof, ticketIds.length > 0 ? ticketIds : undefined);
       setActionSuccess("Fichier PDF vectoriel généré et téléchargé avec succès !");
@@ -234,6 +243,11 @@ export default function RouterUsersPage({ params }: PageProps) {
   useEffect(() => {
     loadData();
   }, [routerId]);
+
+  // Réinitialisation automatique de la sélection lors du changement de profil
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [selectedProfile]);
 
   // Décompte universel et tolérant des tickets par profil (hors tickets expirés)
   const getTicketsForProfile = (pName: string, pTimeout?: string) => {
@@ -515,14 +529,15 @@ export default function RouterUsersPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-1.5 pt-4 mt-3 border-t border-white/20 text-xs font-bold">
+              <div className="grid grid-cols-2 gap-2 pt-4 mt-3 border-t border-white/20 text-xs font-bold">
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedProfile("ALL");
+                    setSelectedIds(new Set());
                     setViewMode("TABLE");
                   }}
-                  className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Ouvrir</span>
@@ -530,19 +545,10 @@ export default function RouterUsersPage({ params }: PageProps) {
                 <button
                   type="button"
                   onClick={() => handleOpenGenerateModal("ALL")}
-                  className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-300" />
                   <span>Générer</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePrintTickets(users)}
-                  className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                  title="Imprimer tous les tickets"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimer</span>
                 </button>
               </div>
             </div>
@@ -575,14 +581,15 @@ export default function RouterUsersPage({ params }: PageProps) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1.5 pt-4 mt-3 border-t border-white/20 text-xs font-bold">
+                  <div className="grid grid-cols-2 gap-2 pt-4 mt-3 border-t border-white/20 text-xs font-bold">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedProfile(p.name);
+                        setSelectedIds(new Set());
                         setViewMode("TABLE");
                       }}
-                      className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>Ouvrir</span>
@@ -590,19 +597,10 @@ export default function RouterUsersPage({ params }: PageProps) {
                     <button
                       type="button"
                       onClick={() => handleOpenGenerateModal(p.name)}
-                      className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Zap className="w-3.5 h-3.5 text-amber-300" />
                       <span>Générer</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePrintTickets(matchingTickets)}
-                      className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      title={`Imprimer les tickets du profil ${p.name}`}
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Imprimer</span>
                     </button>
                   </div>
                 </div>

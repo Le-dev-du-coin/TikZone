@@ -475,7 +475,8 @@ export const api = {
       }
     }
     if (!filename) {
-      filename = `TikZone_Tickets_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const profStr = profile && profile !== "ALL" ? `${profile.replace(/[^a-zA-Z0-9_-]/g, "_")}_` : "";
+      filename = `TikZone_Tickets_${profStr}${new Date().toISOString().slice(0, 10)}.pdf`;
     }
 
     const blob = await res.blob();

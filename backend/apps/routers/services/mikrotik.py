@@ -407,6 +407,10 @@ class MikrotikService:
 
                 if any(t in topics for t in ["hotspot", "account", "system", "user", "radius"]):
                     msg_lower = msg.lower()
+
+                    # Écarter le bruit de fond généré par le polling API régulier de TikZone
+                    if "via api" in msg_lower and ("logged in" in msg_lower or "logged out" in msg_lower):
+                        continue
                     status_type = "info"
                     if any(w in msg_lower for w in ["failed", "invalid", "error", "reject", "denied"]):
                         status_type = "error"
