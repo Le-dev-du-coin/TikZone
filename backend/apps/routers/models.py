@@ -250,8 +250,10 @@ class VpnCredential(models.Model):
                 f"/radius remove [find comment=\"TikZone RADIUS\"]\n"
                 f"/radius remove [find comment=\"Mikroot RADIUS\"]\n"
                 f"/radius add service=hotspot address={radius_host} secret=\"{secret}\" authentication-port=1812 accounting-port=1813 timeout=3000ms require-message-auth=no comment=\"TikZone RADIUS\"\n"
-                f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m login-by=http-pap,mac-cookie\n"
-                f"/radius incoming set accept=yes port=3799"
+                f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=1m login-by=http-pap,mac-cookie\n"
+                f"/radius incoming set accept=yes port=3799\n"
+                f"/system logging remove [find comment=\"TikZone RADIUS Logs\"]\n"
+                f"/system logging add topics=radius action=memory comment=\"TikZone RADIUS Logs\" disabled=no"
             )
             script += radius_block
 

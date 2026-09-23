@@ -382,14 +382,24 @@ class RouterHotspotOverviewView(APIView):
         total_users_count = HotspotTicket.objects.filter(router=router).count()
         profiles_count = CloudHotspotProfile.objects.filter(router=router, is_active=True).count()
 
-        # Sessions actives en base
-        active_tickets = HotspotTicket.objects.filter(
+        now = timezone.now()
+        # 1. Purge et mise à jour des tickets expirés en base
+        expired_candidates = HotspotTicket.objects.filter(
             router=router, status=HotspotTicket.Status.ACTIVE
-        ).select_related("batch")[:100]
+        )
+        for t in expired_candidates:
+            if t.remaining_seconds <= 0 or (t.expires_at and now >= t.expires_at):
+                t.status = HotspotTicket.Status.EXPIRED
+                t.save(update_fields=["status", "updated_at"])
 
-        active_count = HotspotTicket.objects.filter(
-            router=router, status=HotspotTicket.Status.ACTIVE
-        ).count()
+        # 2. Sessions actives réelles en base
+        active_tickets = list(
+            HotspotTicket.objects.filter(
+                router=router, status=HotspotTicket.Status.ACTIVE
+            ).select_related("batch")[:100]
+        )
+
+        from .services.mikrotik import format_duration, format_bytes_human, parse_ros_duration
 
         active_list = [
             {
@@ -397,15 +407,15 @@ class RouterHotspotOverviewView(APIView):
                 "user": t.code,
                 "profile": t.profile_name,
                 "price": f"{int(t.price)} FCFA",
-                "limit_uptime": t.batch.time_limit if t.batch else "1h",
+                "limit_uptime": t.batch.time_limit if t.batch else (t.profile_name or "1h"),
                 "address": str(t.ip_address or "-"),
                 "mac_address": t.mac_address or "-",
-                "uptime": f"{t.uptime_used_seconds // 60}m",
-                "session_time_left": f"{t.remaining_seconds // 60}m" if t.remaining_seconds > 0 else "Expiré",
+                "uptime": format_duration(t.uptime_used_seconds),
+                "session_time_left": format_duration(t.remaining_seconds) if t.remaining_seconds > 0 else "0s",
                 "idle_time": "-",
-                "bytes_in": f"{round(t.bytes_in / (1024 * 1024), 1)} MB" if t.bytes_in else "0 MB",
-                "bytes_out": f"{round(t.bytes_out / (1024 * 1024), 1)} MB" if t.bytes_out else "0 MB",
-                "total_traffic": f"{round((t.bytes_in + t.bytes_out) / (1024 * 1024), 1)} MB",
+                "bytes_in": format_bytes_human(t.bytes_in),
+                "bytes_out": format_bytes_human(t.bytes_out),
+                "total_traffic": format_bytes_human(t.bytes_in + t.bytes_out),
                 "total_bytes_raw": t.bytes_in + t.bytes_out,
                 "login_by": "cloud",
             }
@@ -420,6 +430,8 @@ class RouterHotspotOverviewView(APIView):
             ros_active = api.get_resource("/ip/hotspot/active").get()
             pool.disconnect()
             ros_map = {a.get("user"): a for a in ros_active if a.get("user")}
+            tickets_by_code = {t.code: t for t in active_tickets}
+
             for item in active_list:
                 m_info = ros_map.get(item["user"])
                 if m_info:
@@ -429,12 +441,63 @@ class RouterHotspotOverviewView(APIView):
                         item["mac_address"] = m_info.get("mac-address")
                     if m_info.get("id"):
                         item["ros_active_id"] = m_info.get("id")
+                    if m_info.get("idle-time"):
+                        item["idle_time"] = m_info.get("idle-time")
+
+                    ros_uptime = parse_ros_duration(m_info.get("uptime"))
+                    ros_time_left_raw = m_info.get("session-time-left")
+                    ros_time_left = parse_ros_duration(ros_time_left_raw) if ros_time_left_raw else None
+                    b_in = int(m_info.get("bytes-in", 0)) if str(m_info.get("bytes-in", 0)).isdigit() else 0
+                    b_out = int(m_info.get("bytes-out", 0)) if str(m_info.get("bytes-out", 0)).isdigit() else 0
+
+                    if ros_uptime > 0:
+                        item["uptime"] = format_duration(ros_uptime)
+                    if ros_time_left is not None:
+                        item["session_time_left"] = format_duration(ros_time_left) if ros_time_left > 0 else "0s"
+                    if b_in > 0 or b_out > 0:
+                        item["bytes_in"] = format_bytes_human(b_in)
+                        item["bytes_out"] = format_bytes_human(b_out)
+                        item["total_traffic"] = format_bytes_human(b_in + b_out)
+                        item["total_bytes_raw"] = b_in + b_out
+
+                    # Mise à jour synchrone de la base
+                    db_t = tickets_by_code.get(item["user"])
+                    if db_t:
+                        fields_to_save = []
+                        if ros_uptime > db_t.uptime_used_seconds:
+                            db_t.uptime_used_seconds = ros_uptime
+                            fields_to_save.append("uptime_used_seconds")
+                        if b_in > db_t.bytes_in:
+                            db_t.bytes_in = b_in
+                            fields_to_save.append("bytes_in")
+                        if b_out > db_t.bytes_out:
+                            db_t.bytes_out = b_out
+                            fields_to_save.append("bytes_out")
+                        if m_info.get("mac-address") and not db_t.mac_address:
+                            db_t.mac_address = m_info.get("mac-address")
+                            fields_to_save.append("mac_address")
+
+                        # Détection expiration : kick et clôture
+                        if (ros_time_left is not None and ros_time_left <= 0) or db_t.remaining_seconds <= 0:
+                            db_t.status = HotspotTicket.Status.EXPIRED
+                            fields_to_save.append("status")
+                            try:
+                                MikrotikService.disconnect_active_user(router, m_info.get("id"))
+                            except Exception:
+                                pass
+
+                        if fields_to_save:
+                            fields_to_save.append("updated_at")
+                            db_t.save(update_fields=list(set(fields_to_save)))
+
+            # Exclure immédiatement toute session dont le temps restant est épuisé
+            active_list = [item for item in active_list if item.get("session_time_left") not in ["0s", "Expiré"]]
         except Exception:
             pass
 
         return Response({
             "online": True,
-            "active_count": active_count,
+            "active_count": len(active_list),
             "total_users_count": total_users_count,
             "profiles_count": profiles_count,
             "active_users": active_list,
@@ -974,10 +1037,11 @@ class RouterTicketsPdfView(APIView):
 
 
 class RouterLogsView(APIView):
-    """Récupère le journal d'activité (Hotspot Log & System Log) en temps réel."""
+    """Récupère le journal d'activité unifié (Hotspot Log, RADIUS Cloud & System Log) en temps réel."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, router_id):
+        from django.core.cache import cache
         from .services.mikrotik import MikrotikService
         try:
             router = get_user_router_or_404(
@@ -986,9 +1050,15 @@ class RouterLogsView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        limit = int(request.query_params.get("limit", 50))
-        logs = MikrotikService.get_logs(router, limit=limit)
-        return Response({"count": len(logs), "results": logs})
+        limit = int(request.query_params.get("limit", 60))
+        ros_logs = MikrotikService.get_logs(router, limit=limit)
+
+        # Récupération des logs temps réel du moteur Cloud RADIUS
+        radius_logs = cache.get(f"router_radius_logs_{router.id}") or []
+
+        # Fusion des logs (les événements récents de RADIUS en tête)
+        combined = list(radius_logs[:30]) + list(ros_logs)
+        return Response({"count": len(combined), "results": combined[:limit]})
 
 
 class RouterDisconnectActiveView(APIView):
@@ -1084,6 +1154,8 @@ class RouterSaaSTicketsView(APIView):
         if search:
             qs = qs.filter(code__icontains=search)
 
+        from .services.mikrotik import format_duration, format_bytes_human
+
         total_count = qs.count()
         tickets_list = [
             {
@@ -1094,13 +1166,18 @@ class RouterSaaSTicketsView(APIView):
                 "status": t.status,
                 "time_limit": t.batch.time_limit if t.batch else "3h",
                 "uptime_used_seconds": t.uptime_used_seconds,
+                "uptime_formatted": format_duration(t.uptime_used_seconds),
                 "remaining_seconds": t.remaining_seconds,
+                "remaining_formatted": format_duration(t.remaining_seconds) if t.remaining_seconds > 0 else "0s",
                 "price": int(t.price),
                 "comment": t.comment,
                 "first_login_at": t.first_login_at,
                 "mac_address": t.mac_address,
                 "bytes_in": t.bytes_in,
                 "bytes_out": t.bytes_out,
+                "bytes_in_formatted": format_bytes_human(t.bytes_in),
+                "bytes_out_formatted": format_bytes_human(t.bytes_out),
+                "total_traffic_formatted": format_bytes_human(t.bytes_in + t.bytes_out),
                 "created_at": t.created_at,
             }
             for t in qs[:500]

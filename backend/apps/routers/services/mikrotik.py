@@ -6,7 +6,80 @@ from django.conf import settings
 from django.core.cache import cache
 from apps.routers.models import Router
 
+import re
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 logger = logging.getLogger(__name__)
+
+
+def parse_ros_duration(val: Any) -> int:
+    """Convertit n'importe quelle durée MikroTik (ex: '01:23:45', '45m', '3h20m', '1d2h', '32s') en secondes entières."""
+    if not val:
+        return 0
+    if isinstance(val, (int, float)):
+        return int(val)
+    val = str(val).strip()
+    if not val or val == "-":
+        return 0
+    # Format hh:mm:ss ou mm:ss
+    if ":" in val:
+        parts = val.split(":")
+        try:
+            if len(parts) == 3:
+                return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+            elif len(parts) == 2:
+                return int(parts[0]) * 60 + int(parts[1])
+        except (ValueError, TypeError):
+            pass
+    # Format RouterOS standard : '1w2d3h4m5s'
+    seconds = 0
+    matches = re.findall(r"(\d+)\s*([wdhmsj])", val, re.IGNORECASE)
+    if matches:
+        unit_map = {"w": 604800, "d": 86400, "j": 86400, "h": 3600, "m": 60, "s": 1}
+        for num, unit in matches:
+            seconds += int(num) * unit_map.get(unit.lower(), 1)
+        return seconds
+    if val.isdigit():
+        return int(val)
+    return 0
+
+
+def format_duration(seconds: Union[int, float, None]) -> str:
+    """Formate des secondes de manière ergonomique et naturelle (ex: '5h 59m', '6h', '45m', '30s')."""
+    if seconds is None or seconds <= 0:
+        return "0s"
+    seconds = int(seconds)
+    days = seconds // 86400
+    rem = seconds % 86400
+    hours = rem // 3600
+    rem = rem % 3600
+    minutes = rem // 60
+    secs = rem % 60
+
+    if days > 0:
+        return f"{days}j {hours}h" if hours > 0 else f"{days}j"
+    if hours > 0:
+        return f"{hours}h {minutes}m" if minutes > 0 else f"{hours}h"
+    if minutes > 0:
+        return f"{minutes}m {secs}s" if (secs > 0 and minutes < 5) else f"{minutes}m"
+    return f"{secs}s"
+
+
+def format_bytes_human(bytes_val: Any) -> str:
+    """Formate une quantité d'octets en unité adaptée (B, Ko, Mo, Go)."""
+    try:
+        val = float(bytes_val or 0)
+        if val <= 0:
+            return "0 Mo"
+        if val >= 1024 * 1024 * 1024:
+            return f"{val / (1024 * 1024 * 1024):.2f} Go"
+        elif val >= 1024 * 1024:
+            return f"{val / (1024 * 1024):.1f} Mo"
+        elif val >= 1024:
+            return f"{val / 1024:.0f} Ko"
+        return f"{int(val)} B"
+    except (ValueError, TypeError):
+        return "0 Mo"
 
 
 class MikrotikService:
@@ -14,18 +87,8 @@ class MikrotikService:
 
     @staticmethod
     def _format_bytes(bytes_str: Any) -> str:
-        """Convertit un nombre d'octets en unité lisible (Kio, Mio, Gio)."""
-        try:
-            val = float(bytes_str)
-            if val >= 1024 * 1024 * 1024:
-                return f"{val / (1024 * 1024 * 1024):.2f} Gio"
-            elif val >= 1024 * 1024:
-                return f"{val / (1024 * 1024):.2f} Mio"
-            elif val >= 1024:
-                return f"{val / 1024:.2f} Kio"
-            return f"{val:.0f} octets"
-        except (ValueError, TypeError):
-            return str(bytes_str)
+        """Convertit un nombre d'octets en unité lisible."""
+        return format_bytes_human(bytes_str)
 
     @classmethod
     def get_api_connection(cls, router: Router, timeout: float = 3.5):
@@ -303,11 +366,16 @@ class MikrotikService:
         if m_ip:
             ip = m_ip.group(1)
 
+        # Motif 4: RADIUS user extraction (ex: '<radius-172.29.88.1>: ...' or 'user <81060427>' or 'user 81060427')
+        m_rad = re.search(r"user\s+<([^>]+)>", msg, re.IGNORECASE) or re.search(r"user\s+([0-9a-zA-Z_-]{4,20})", msg, re.IGNORECASE)
+        if m_rad:
+            user = m_rad.group(1)
+
         # Extraction de l'utilisateur si présent
         words = msg.strip().split()
-        if words:
+        if words and not user:
             candidate = words[0].rstrip(":")
-            if candidate.lower() not in ["user", "system", "hotspot", "error", "warning", "info", "login"]:
+            if candidate.lower() not in ["user", "system", "hotspot", "error", "warning", "info", "login", "radius"]:
                 user = candidate
             elif "system" in topics:
                 user = "system"
@@ -316,7 +384,7 @@ class MikrotikService:
 
     @classmethod
     def get_logs(cls, router: Router, limit: int = 50) -> List[Dict[str, Any]]:
-        """Récupère les entrées du journal Hotspot et système (avec cache 10s et extraction d'IP/User)."""
+        """Récupère les entrées du journal Hotspot, RADIUS et système (avec cache 10s et extraction d'IP/User)."""
         cache_key = f"router_logs_{router.id}_{limit}"
         cached = cache.get(cache_key)
         if cached is not None:
@@ -337,20 +405,22 @@ class MikrotikService:
                 msg = item.get("message", "")
                 time_str = item.get("time", "")
 
-                if "hotspot" in topics or "account" in topics or "system" in topics or "user" in topics:
+                if any(t in topics for t in ["hotspot", "account", "system", "user", "radius"]):
                     msg_lower = msg.lower()
                     status_type = "info"
-                    if "failed" in msg_lower or "invalid" in msg_lower or "error" in msg_lower:
+                    if any(w in msg_lower for w in ["failed", "invalid", "error", "reject", "denied"]):
                         status_type = "error"
-                    elif "logged out" in msg_lower or "timeout" in msg_lower:
+                    elif any(w in msg_lower for w in ["logged out", "timeout", "disconnected"]):
                         status_type = "warning"
-                    elif "logged in" in msg_lower or "log in" in msg_lower:
+                    elif any(w in msg_lower for w in ["logged in", "log in", "accepted", "success"]):
                         status_type = "success"
 
                     user, ip = cls._parse_log_user_and_ip(msg, topics)
 
                     category = "general"
-                    if "hotspot" in topics:
+                    if "radius" in topics:
+                        category = "radius"
+                    elif "hotspot" in topics:
                         category = "hotspot"
                     elif "system" in topics:
                         category = "system"

@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Coins, Printer, X } from "lucide-react";
+import { Coins, Download, Loader2, Printer, X } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -15,6 +15,7 @@ export default function RouterSalesReportPrintPage({ params }: PageProps) {
   const [report, setReport] = useState<any>(null);
   const [routerData, setRouterData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -27,13 +28,6 @@ export default function RouterSalesReportPrintPage({ params }: PageProps) {
         if (found) setRouterData(found);
       }
       setLoading(false);
-
-      // Déclenchement automatique de la fenêtre d'impression native du navigateur
-      setTimeout(() => {
-        if (typeof window !== "undefined") {
-          window.print();
-        }
-      }, 600);
     });
   }, [routerId]);
 
@@ -92,11 +86,26 @@ export default function RouterSalesReportPrintPage({ params }: PageProps) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            onClick={async () => {
+              setIsDownloadingPdf(true);
+              try {
+                await api.downloadSalesReportPdf(routerId, routerName);
+              } catch (err: any) {
+                alert("Erreur de génération PDF Playwright: " + (err.message || "Erreur serveur"));
+              } finally {
+                setIsDownloadingPdf(false);
+              }
+            }}
+            disabled={isDownloadingPdf}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            title="Génération d'un vrai PDF vectoriel haute fidélité via Chromium Playwright"
           >
-            <Printer className="w-4 h-4" />
-            <span>Imprimer / Enregistrer en PDF</span>
+            {isDownloadingPdf ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            <span>{isDownloadingPdf ? "Génération Chromium..." : "Imprimer / Télécharger en PDF (Chromium)"}</span>
           </button>
           <button
             type="button"

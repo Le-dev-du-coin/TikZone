@@ -46,6 +46,32 @@ const CARD_PALETTES = [
   { bg: "bg-teal-500", text: "text-white", border: "border-teal-400", glow: "shadow-teal-500/20" },
 ];
 
+function formatDuration(seconds: number | string | undefined): string {
+  if (!seconds || seconds === "0" || seconds === "-") return "0s";
+  const sec = typeof seconds === "string" ? parseInt(seconds, 10) : seconds;
+  if (isNaN(sec) || sec <= 0) return "0s";
+  const days = Math.floor(sec / 86400);
+  const rem = sec % 86400;
+  const hours = Math.floor(rem / 3600);
+  const rem2 = rem % 3600;
+  const minutes = Math.floor(rem2 / 60);
+  const s = rem2 % 60;
+  if (days > 0) return hours > 0 ? `${days}j ${hours}h` : `${days}j`;
+  if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  if (minutes > 0) return s > 0 && minutes < 5 ? `${minutes}m ${s}s` : `${minutes}m`;
+  return `${s}s`;
+}
+
+function formatBytes(bytesVal: number | string | undefined): string {
+  if (!bytesVal || bytesVal === "0" || bytesVal === "-") return "0 Mo";
+  const num = typeof bytesVal === "string" ? parseFloat(bytesVal) : bytesVal;
+  if (isNaN(num) || num <= 0) return "0 Mo";
+  if (num >= 1024 * 1024 * 1024) return `${(num / (1024 * 1024 * 1024)).toFixed(2)} Go`;
+  if (num >= 1024 * 1024) return `${(num / (1024 * 1024)).toFixed(1)} Mo`;
+  if (num >= 1024) return `${Math.round(num / 1024)} Ko`;
+  return `${Math.round(num)} B`;
+}
+
 export default function RouterUsersPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const routerId = resolvedParams.id;
@@ -165,10 +191,15 @@ export default function RouterUsersPage({ params }: PageProps) {
         password: t.password,
         profile: t.profile || "",
         comment: t.comment || "Ticket Cloud Hotspot",
-        uptime: t.uptime_used_seconds ? `${Math.floor(t.uptime_used_seconds / 60)}m` : "0s",
+        uptime: t.uptime_formatted || (t.uptime_used_seconds ? formatDuration(t.uptime_used_seconds) : "0s"),
+        remaining: t.remaining_formatted || (t.remaining_seconds ? formatDuration(t.remaining_seconds) : "0s"),
         uptime_used_seconds: t.uptime_used_seconds || 0,
+        remaining_seconds: t.remaining_seconds || 0,
         bytes_in: t.bytes_in || 0,
         bytes_out: t.bytes_out || 0,
+        bytes_in_formatted: t.bytes_in_formatted || formatBytes(t.bytes_in),
+        bytes_out_formatted: t.bytes_out_formatted || formatBytes(t.bytes_out),
+        total_traffic_formatted: t.total_traffic_formatted || formatBytes((t.bytes_in || 0) + (t.bytes_out || 0)),
         source: "saas",
         status: t.status || "NEW",
         price: t.price,
@@ -757,13 +788,13 @@ export default function RouterUsersPage({ params }: PageProps) {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-emerald-600 dark:text-emerald-400 font-bold">
-                            {u.uptime || "0s"}
+                            {u.uptime || formatDuration(u.uptime_used_seconds) || "0s"}
                           </td>
                           <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                             {u.time_limit || u.limit_uptime || "Illimité"}
                           </td>
                           <td className="px-4 py-3 text-slate-600 dark:text-slate-300 text-[11px]">
-                            ↑ {u.bytes_out ? `${(u.bytes_out / (1024 * 1024)).toFixed(1)}M` : "0M"} / ↓ {u.bytes_in ? `${(u.bytes_in / (1024 * 1024)).toFixed(1)}M` : "0M"}
+                            ↑ {u.bytes_out_formatted || formatBytes(u.bytes_out)} / ↓ {u.bytes_in_formatted || formatBytes(u.bytes_in)}
                           </td>
                           <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-sans text-[11px] truncate max-w-xs">
                             {u.comment || "—"}
@@ -1144,9 +1175,27 @@ export default function RouterUsersPage({ params }: PageProps) {
               </div>
 
               <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-purple-500" /> Validité
+                </span>
+                <div className="font-bold text-slate-900 dark:text-white">
+                  {selectedTicketDetails.time_limit || "Illimité"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
                 <span className="text-[10px] font-bold uppercase text-slate-400">Temps Consommé</span>
                 <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                  {selectedTicketDetails.uptime || "0s"}
+                  {selectedTicketDetails.uptime || formatDuration(selectedTicketDetails.uptime_used_seconds) || "0s"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Temps Restant</span>
+                <div className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                  {selectedTicketDetails.status === "EXPIRED"
+                    ? "Épuisé"
+                    : selectedTicketDetails.remaining || (selectedTicketDetails.remaining_seconds ? formatDuration(selectedTicketDetails.remaining_seconds) : "Disponible")}
                 </div>
               </div>
 
@@ -1157,12 +1206,15 @@ export default function RouterUsersPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1 sm:col-span-2">
                 <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
-                  <HardDrive className="w-3 h-3 text-sky-500" /> Données In / Out
+                  <HardDrive className="w-3 h-3 text-sky-500" /> Données Consommées (In / Out)
                 </span>
-                <div className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
-                  ↑ {selectedTicketDetails.bytes_out ? `${(selectedTicketDetails.bytes_out / (1024 * 1024)).toFixed(1)}M` : "0M"} / ↓ {selectedTicketDetails.bytes_in ? `${(selectedTicketDetails.bytes_in / (1024 * 1024)).toFixed(1)}M` : "0M"}
+                <div className="font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
+                  ↑ {selectedTicketDetails.bytes_out_formatted || formatBytes(selectedTicketDetails.bytes_out)} / ↓ {selectedTicketDetails.bytes_in_formatted || formatBytes(selectedTicketDetails.bytes_in)}
+                  <span className="text-[11px] font-normal text-slate-400 ml-2">
+                    (Total: {selectedTicketDetails.total_traffic_formatted || formatBytes((selectedTicketDetails.bytes_in || 0) + (selectedTicketDetails.bytes_out || 0))})
+                  </span>
                 </div>
               </div>
             </div>

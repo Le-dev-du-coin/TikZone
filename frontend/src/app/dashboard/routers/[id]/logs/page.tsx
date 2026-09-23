@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Filter,
   Info,
+  Radio,
   RefreshCw,
   ScrollText,
   Search,
@@ -33,7 +34,7 @@ export default function RouterLogsPage({ params }: PageProps) {
   const [loading, setLoading] = useState(() => logs.length === 0);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | "SUCCESS" | "WARNING" | "ERROR">("ALL");
-  const [filterCategory, setFilterCategory] = useState<"ALL" | "HOTSPOT" | "SYSTEM">("ALL");
+  const [filterCategory, setFilterCategory] = useState<"ALL" | "HOTSPOT" | "SYSTEM" | "RADIUS">("ALL");
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const loadData = async () => {
@@ -70,17 +71,18 @@ export default function RouterLogsPage({ params }: PageProps) {
       ip.includes(query) ||
       (log.time || "").includes(query);
 
-    const isSuccess = msg.includes("log in") || msg.includes("logged in");
-    const isWarning = msg.includes("logged out") || msg.includes("timeout");
-    const isError = msg.includes("failed") || msg.includes("invalid") || msg.includes("error");
+    const isSuccess = log.status_type === "success" || msg.includes("log in") || msg.includes("logged in") || msg.includes("accept") || msg.includes("réussie");
+    const isWarning = log.status_type === "warning" || msg.includes("logged out") || msg.includes("timeout") || msg.includes("fermée");
+    const isError = log.status_type === "error" || msg.includes("failed") || msg.includes("invalid") || msg.includes("error") || msg.includes("refusé");
 
     if (filterType === "SUCCESS" && !isSuccess) return false;
     if (filterType === "WARNING" && !isWarning) return false;
     if (filterType === "ERROR" && !isError) return false;
 
-    const cat = log.category || (log.topics?.includes("hotspot") ? "hotspot" : "system");
+    const cat = log.category || (log.topics?.includes("radius") ? "radius" : log.topics?.includes("hotspot") ? "hotspot" : "system");
     if (filterCategory === "HOTSPOT" && cat !== "hotspot") return false;
     if (filterCategory === "SYSTEM" && cat !== "system") return false;
+    if (filterCategory === "RADIUS" && cat !== "radius") return false;
 
     return matchesSearch;
   });
@@ -162,6 +164,18 @@ export default function RouterLogsPage({ params }: PageProps) {
             >
               <Wifi className="w-3 h-3" />
               <span>Hotspot Seul</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterCategory("RADIUS")}
+              className={`px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                filterCategory === "RADIUS"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+              }`}
+            >
+              <Radio className="w-3 h-3" />
+              <span>RADIUS Cloud</span>
             </button>
             <button
               type="button"
@@ -269,13 +283,15 @@ export default function RouterLogsPage({ params }: PageProps) {
                       <td className="px-4 py-2.5 font-sans">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                            isHotspotTopic
+                            log.category === "radius" || log.topics?.includes("radius")
+                              ? "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                              : isHotspotTopic
                               ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
                               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                           }`}
                           title={log.topics}
                         >
-                          {isHotspotTopic ? "Hotspot" : "Système"}
+                          {log.category === "radius" || log.topics?.includes("radius") ? "RADIUS" : isHotspotTopic ? "Hotspot" : "Système"}
                         </span>
                       </td>
                       <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">
