@@ -106,9 +106,6 @@ export default function RouterUsersPage({ params }: PageProps) {
       return;
     }
     setPrintTickets(ticketList);
-    setTimeout(() => {
-      window.print();
-    }, 250);
   };
 
   // Notifications
@@ -168,22 +165,47 @@ export default function RouterUsersPage({ params }: PageProps) {
     loadData();
   }, [routerId]);
 
-  // Décompte des tickets par profil (insensible à la casse)
-  const profileCounts: Record<string, number> = {};
-  users.forEach((u) => {
-    const profKey = (u.profile || "default").trim().toLowerCase();
-    profileCounts[profKey] = (profileCounts[profKey] || 0) + 1;
-  });
+  // Décompte universel et tolérant des tickets par profil
+  const getTicketsForProfile = (pName: string, pTimeout?: string) => {
+    const targetName = (pName || "").trim().toLowerCase();
+    const targetTimeout = (pTimeout || "").trim().toLowerCase();
 
-  // Filtrage des tickets pour la vue tableau (insensible à la casse)
+    return users.filter((u) => {
+      const uProf = (u.profile || "").trim().toLowerCase();
+      const uLimit = (u.time_limit || "").trim().toLowerCase();
+
+      // 1. Match direct par nom de forfait (insensible à la casse)
+      if (uProf === targetName) return true;
+
+      // 2. Tolérance pour les tickets ayant le format durée (ex: "3h", "6h", "24h")
+      if (targetTimeout && (uProf === targetTimeout || uLimit === targetTimeout)) {
+        return true;
+      }
+
+      return false;
+    });
+  };
+
+  // Filtrage des tickets pour la vue tableau
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
       (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
       (u.comment && u.comment.toLowerCase().includes(search.toLowerCase()));
-    const matchesProfile =
-      selectedProfile === "ALL" ||
-      (u.profile || "").trim().toLowerCase() === selectedProfile.trim().toLowerCase();
-    return matchesSearch && matchesProfile;
+
+    if (!matchesSearch) return false;
+    if (selectedProfile === "ALL") return true;
+
+    const currentProfObj = profiles.find((p) => p.name === selectedProfile);
+    const pName = selectedProfile.trim().toLowerCase();
+    const pTimeout = (currentProfObj?.session_timeout || "").trim().toLowerCase();
+
+    const uProf = (u.profile || "").trim().toLowerCase();
+    const uLimit = (u.time_limit || "").trim().toLowerCase();
+
+    if (uProf === pName) return true;
+    if (pTimeout && (uProf === pTimeout || uLimit === pTimeout)) return true;
+
+    return false;
   });
 
   // Gestion de la sélection multiple
@@ -452,8 +474,8 @@ export default function RouterUsersPage({ params }: PageProps) {
             {/* Cartes par Profil individuel */}
             {profiles.map((p, idx) => {
               const palette = CARD_PALETTES[(idx + 1) % CARD_PALETTES.length];
-              const pKey = (p.name || "").trim().toLowerCase();
-              const count = profileCounts[pKey] || 0;
+              const matchingTickets = getTicketsForProfile(p.name, p.session_timeout);
+              const count = matchingTickets.length;
 
               return (
                 <div
@@ -499,11 +521,7 @@ export default function RouterUsersPage({ params }: PageProps) {
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        handlePrintTickets(
-                          users.filter((u) => (u.profile || "").trim().toLowerCase() === pKey)
-                        )
-                      }
+                      onClick={() => handlePrintTickets(matchingTickets)}
                       className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
                       title={`Imprimer les tickets du profil ${p.name}`}
                     >
@@ -545,7 +563,7 @@ export default function RouterUsersPage({ params }: PageProps) {
                 <option value="ALL">Tous les Profils ({users.length})</option>
                 {profiles.map((p) => (
                   <option key={p.id || p.name} value={p.name}>
-                    {p.name} ({profileCounts[p.name] || 0})
+                    {p.name} ({getTicketsForProfile(p.name, p.session_timeout).length})
                   </option>
                 ))}
               </select>
@@ -836,14 +854,11 @@ export default function RouterUsersPage({ params }: PageProps) {
                     }}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
                   >
-                    <option value="default">default</option>
-                    {profiles
-                      .filter((p) => p.name?.toLowerCase() !== "default")
-                      .map((p) => (
-                        <option key={p.id || p.name} value={p.name}>
-                          {p.name} ({p.price || "100 FCFA"})
-                        </option>
-                      ))}
+                    {profiles.map((p) => (
+                      <option key={p.id || p.name} value={p.name}>
+                        {p.name} ({p.price ? `${p.price} FCFA` : "100 FCFA"}) — {p.session_timeout || "1h"}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -964,9 +979,10 @@ export default function RouterUsersPage({ params }: PageProps) {
 
       {/* Zone d'impression universelle A4 découpable */}
       {printTickets.length > 0 && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs p-4 flex flex-col items-center justify-start no-print">
-          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs p-4 flex flex-col items-center justify-start print:p-0 print:m-0 print:bg-transparent print:static print:overflow-visible">
+          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-auto print:border-none print:shadow-none print:p-0 print:max-w-none print:m-0 print:rounded-none">
+            {/* Header de la modale masqué à l'impression */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 no-print">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600">
                   <Printer className="w-5 h-5" />
@@ -1055,36 +1071,46 @@ export default function RouterUsersPage({ params }: PageProps) {
       {/* Style d'impression Découpable A4 & Thermique */}
       <style jsx global>{`
         @media print {
-          body * {
-            visibility: hidden !important;
+          /* Masquer tout élément applicatif non pertinent */
+          .no-print,
+          aside,
+          nav,
+          header {
+            display: none !important;
           }
-          #print-area,
+          body {
+            background: white !important;
+            color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          #print-area {
+            display: block !important;
+            visibility: visible !important;
+            position: static !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
           #print-area * {
             visibility: visible !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          #print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .no-print {
-            display: none !important;
-          }
           .vouchers-grid {
             display: grid !important;
             grid-template-columns: repeat(4, 1fr) !important;
             gap: 6px !important;
+            width: 100% !important;
             padding: 0 !important;
             border: none !important;
           }
           .voucher-card {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+            background: white !important;
+            color: black !important;
           }
         }
       `}</style>

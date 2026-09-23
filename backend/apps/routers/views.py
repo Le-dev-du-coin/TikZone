@@ -575,6 +575,21 @@ class RouterHotspotProfilesView(APIView):
 
         qs = CloudHotspotProfile.objects.filter(router=router)
 
+        # Réconciliation automatique des tickets orphelins (ex: tickets créés avec d'anciens noms)
+        from .models import HotspotTicket
+        existing_profile_names = {p.name.strip().lower(): p.name for p in qs}
+        for prof in qs:
+            if prof.session_timeout_seconds > 0:
+                orphans = HotspotTicket.objects.filter(
+                    router=router,
+                    time_limit_seconds=prof.session_timeout_seconds
+                )
+                for t in orphans:
+                    t_prof = (t.profile_name or "").strip().lower()
+                    if t_prof not in existing_profile_names or t_prof in ("default", ""):
+                        t.profile_name = prof.name
+                        t.save(update_fields=["profile_name"])
+
         active_only = request.query_params.get("active_only")
         if active_only == "true":
             qs = qs.filter(is_active=True)
@@ -671,7 +686,12 @@ class RouterHotspotProfilesView(APIView):
             if new_name and new_name.lower() != profile.name.lower():
                 if CloudHotspotProfile.objects.filter(router=router, name__iexact=new_name).exclude(id=profile.id).exists():
                     return Response({"detail": f"Un forfait nommé '{new_name}' existe déjà."}, status=status.HTTP_400_BAD_REQUEST)
+                old_name = profile.name
                 profile.name = new_name
+                # Cascade update automatique des tickets et des lots associés
+                from .models import HotspotTicket, HotspotBatch
+                HotspotTicket.objects.filter(router=router, profile_name__iexact=old_name).update(profile_name=new_name)
+                HotspotBatch.objects.filter(router=router, profile_name__iexact=old_name).update(profile_name=new_name)
 
         if "price" in request.data:
             profile.price = int(request.data["price"])
@@ -1047,12 +1067,17 @@ class RouterSaaSTicketsView(APIView):
 
             from .models import CloudHotspotProfile
             cloud_profile = CloudHotspotProfile.objects.filter(router=router, name__iexact=profile_name).first()
+            if not cloud_profile:
+                # Fallback automatique sur le premier profil actif du routeur
+                cloud_profile = CloudHotspotProfile.objects.filter(router=router, is_active=True).first()
+
             if cloud_profile:
+                profile_name = cloud_profile.name
                 if raw_price is None:
                     price = int(cloud_profile.price)
                 else:
                     price = int(raw_price)
-                if "time_limit" not in request.data:
+                if not request.data.get("time_limit") or request.data.get("time_limit") in ("3h", ""):
                     time_limit = cloud_profile.session_timeout
             else:
                 price = int(raw_price) if raw_price is not None else 100
