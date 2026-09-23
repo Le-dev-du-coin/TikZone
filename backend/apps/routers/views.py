@@ -489,11 +489,14 @@ class RouterHotspotOverviewView(APIView):
                         if fields_to_save:
                             fields_to_save.append("updated_at")
                             db_t.save(update_fields=list(set(fields_to_save)))
-
-            # Exclure immédiatement toute session dont le temps restant est épuisé
-            active_list = [item for item in active_list if item.get("session_time_left") not in ["0s", "Expiré"]]
         except Exception:
             pass
+
+        # Filtrage strict et absolu : toute session dont le temps restant est épuisé est bannie du direct
+        active_list = [
+            item for item in active_list
+            if str(item.get("session_time_left", "")).lower().strip() not in ["0s", "0m", "0h", "00:00:00", "expiré", "expire"]
+        ]
 
         return Response({
             "online": True,
@@ -957,13 +960,27 @@ class RouterSalesReportPdfView(APIView):
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
         data = get_saas_sales_report_data(router)
-        pdf_bytes = generate_sales_report_pdf(router, data)
+        try:
+            pdf_bytes = generate_sales_report_pdf(router, data)
+        except Exception as e:
+            return Response(
+                {"detail": f"Erreur de génération PDF: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        if not pdf_bytes.startswith(b"%PDF"):
+            return Response(
+                {
+                    "detail": "Le moteur de rendu PDF Chromium Playwright n'est pas opérationnel sur le serveur. "
+                    "Veuillez exécuter 'poetry run playwright install --with-deps chromium' sur le serveur."
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         today_slug = datetime.date.today().strftime("%Y-%m-%d")
-        content_type = "application/pdf" if pdf_bytes.startswith(b"%PDF") else "text/html"
         filename = f"rapport_ventes_{router.name}_{today_slug}.pdf"
 
-        response = HttpResponse(pdf_bytes, content_type=content_type)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'inline; filename="{filename}"'
         return response
 
@@ -1019,7 +1036,22 @@ class RouterTicketsPdfView(APIView):
         if not tickets:
             return Response({"detail": "Aucun ticket trouvé pour cette sélection."}, status=status.HTTP_404_NOT_FOUND)
 
-        pdf_bytes = generate_tickets_pdf(router, tickets, profile_name=prof_label)
+        try:
+            pdf_bytes = generate_tickets_pdf(router, tickets, profile_name=prof_label)
+        except Exception as e:
+            return Response(
+                {"detail": f"Erreur de génération PDF: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        if not pdf_bytes.startswith(b"%PDF"):
+            return Response(
+                {
+                    "detail": "Le moteur de rendu PDF Chromium Playwright n'est pas opérationnel sur le serveur. "
+                    "Veuillez exécuter 'poetry run playwright install --with-deps chromium' sur le serveur."
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         # Nommage professionnel et unique avec composante aléatoire
         safe_zone = slugify(router.hotspot_name or router.name or "Hotspot").upper().replace("-", "_")
@@ -1029,8 +1061,7 @@ class RouterTicketsPdfView(APIView):
 
         filename = f"TikZone_Tickets_{safe_zone}_{safe_prof}_{date_str}_{random_suffix}.pdf"
 
-        content_type = "application/pdf" if pdf_bytes.startswith(b"%PDF") else "text/html"
-        response = HttpResponse(pdf_bytes, content_type=content_type)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         response["X-Filename"] = filename
         return response
@@ -1136,6 +1167,16 @@ class RouterSaaSTicketsView(APIView):
             )
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        from django.utils import timezone
+        now = timezone.now()
+        active_candidates = HotspotTicket.objects.filter(
+            router=router, status=HotspotTicket.Status.ACTIVE
+        )
+        for t in active_candidates:
+            if t.remaining_seconds <= 0 or (t.expires_at and now >= t.expires_at):
+                t.status = HotspotTicket.Status.EXPIRED
+                t.save(update_fields=["status", "updated_at"])
 
         qs = HotspotTicket.objects.filter(router=router).select_related("batch")
 

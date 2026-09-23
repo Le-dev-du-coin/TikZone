@@ -1307,23 +1307,14 @@ export default function RouterUsersPage({ params }: PageProps) {
                   onClick={() => handleDownloadPdf()}
                   disabled={isDownloadingPdf}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
-                  title="Génère un vrai PDF vectoriel A4 via Chromium Playwright"
+                  title="Télécharger le fichier PDF au format A4"
                 >
                   {isDownloadingPdf ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Download className="w-4 h-4" />
                   )}
-                  <span>{isDownloadingPdf ? "Génération PDF..." : "Télécharger PDF (Chromium)"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all"
-                  title="Imprimer directement via la boîte de dialogue du navigateur"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span className="hidden sm:inline">Navigateur</span>
+                  <span>{isDownloadingPdf ? "Génération PDF..." : "Télécharger le PDF"}</span>
                 </button>
                 <button
                   type="button"

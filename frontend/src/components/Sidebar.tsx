@@ -56,11 +56,6 @@ export default function Sidebar({
       icon: Wallet,
     },
     {
-      href: "/dashboard/wallet/history",
-      label: "Historique des Paiements",
-      icon: History,
-    },
-    {
       href: "/dashboard/profile",
       label: "Mon Profil & Sécurité",
       icon: User,

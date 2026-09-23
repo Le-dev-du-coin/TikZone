@@ -139,9 +139,11 @@ def generate_sales_report_pdf(router: Router, report_data: Dict[str, Any]) -> by
             browser.close()
             return pdf_bytes
     except Exception as e:
-        logger.warning(f"Chromium Playwright non disponible ou erreur ({e}). Fallback HTML vers bytes.")
-        # Fallback de sécurité : renvoie le contenu HTML encodé
-        return html_content.encode("utf-8")
+        logger.error(f"Erreur lors de la génération PDF Playwright Chromium: {e}", exc_info=True)
+        raise RuntimeError(
+            "Le moteur Chromium (Playwright) n'est pas installé ou initialisé sur le serveur. "
+            "Exécutez 'poetry run playwright install --with-deps chromium' sur le serveur."
+        )
 
 
 def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") -> bytes:
@@ -293,6 +295,9 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
             browser.close()
             return pdf_bytes
     except Exception as e:
-        logger.warning(f"Playwright Chromium non disponible pour les tickets ({e}). Fallback HTML.")
-        return full_html.encode("utf-8")
+        logger.error(f"Playwright Chromium non disponible pour les tickets: {e}", exc_info=True)
+        raise RuntimeError(
+            "Le moteur Chromium (Playwright) n'est pas installé ou initialisé sur le serveur. "
+            "Exécutez 'poetry run playwright install --with-deps chromium' sur le serveur."
+        )
 

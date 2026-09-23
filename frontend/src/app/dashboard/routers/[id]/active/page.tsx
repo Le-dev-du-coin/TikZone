@@ -10,6 +10,7 @@ import {
   Download,
   Eye,
   HardDrive,
+  Loader2,
   LogOut,
   Radio,
   RefreshCw,
@@ -48,6 +49,9 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Modal de confirmation de déconnexion (Kick)
+  const [sessionToKick, setSessionToKick] = useState<{ activeId: string; username: string } | null>(null);
+
   // Modal de détail de la session active
   const [selectedActiveDetails, setSelectedActiveDetails] = useState<any | null>(null);
 
@@ -61,9 +65,17 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
     try {
       const overview = await api.getRouterHotspotOverview(routerId);
       if (overview?.active_users) {
-        setActiveUsers(overview.active_users);
+        // Exclusion stricte et absolue de toute session expirée
+        const validActive = (overview.active_users || []).filter((s: any) => {
+          const left = String(s.session_time_left || "").toLowerCase().trim();
+          return !["0s", "0m", "0h", "00:00:00", "expiré", "expire"].includes(left);
+        });
+        setActiveUsers(validActive);
         try {
-          localStorage.setItem(`tikzone_cached_hotspot_${routerId}`, JSON.stringify(overview));
+          localStorage.setItem(
+            `tikzone_cached_hotspot_${routerId}`,
+            JSON.stringify({ ...overview, active_users: validActive })
+          );
         } catch {}
       }
     } catch (err) {
@@ -79,13 +91,20 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
     return () => clearInterval(interval);
   }, [routerId]);
 
-  const handleDisconnect = async (activeId: string, username: string) => {
-    if (!confirm(`Déconnecter immédiatement la session active de '${username}' ? (Le ticket ne sera pas supprimé, le client pourra se reconnecter)`)) return;
+  const handleDisconnect = (activeId: string, username: string) => {
+    setSessionToKick({ activeId, username });
+  };
+
+  const handleConfirmKick = async () => {
+    if (!sessionToKick) return;
+    const { activeId, username } = sessionToKick;
     setDisconnectingId(activeId);
+    setSessionToKick(null);
     try {
       await api.disconnectActiveUser(routerId, activeId);
-      setMessage(`Session de '${username}' déconnectée (Kick réussi).`);
+      setMessage(`Session de '${username}' déconnectée avec succès (Kick réussi).`);
       setTimeout(() => setMessage(null), 3500);
+      setActiveUsers((prev) => prev.filter((u) => u.id !== activeId && u.ros_active_id !== activeId));
       loadData();
     } catch (err: any) {
       setErrorMsg("Erreur lors de la déconnexion : " + err.message);
@@ -552,6 +571,62 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
                   Fermer
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMATION DE DÉCONNEXION (KICK) */}
+      {sessionToKick && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center shrink-0 border border-rose-200 dark:border-rose-900/60">
+                <LogOut className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Déconnecter la Session ?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Déconnexion immédiate de l'utilisateur actif.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-1">
+              <div className="text-slate-600 dark:text-slate-300">
+                Êtes-vous sûr de vouloir couper la session en cours pour :
+              </div>
+              <div className="font-mono font-black text-sm text-slate-900 dark:text-white">
+                {sessionToKick.username}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                Le ticket ne sera pas supprimé et restera valide s'il lui reste du temps.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSessionToKick(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmKick}
+                disabled={disconnectingId === sessionToKick.activeId}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-md shadow-rose-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                {disconnectingId === sessionToKick.activeId ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <LogOut className="w-3.5 h-3.5" />
+                )}
+                <span>Déconnecter la Session</span>
+              </button>
             </div>
           </div>
         </div>

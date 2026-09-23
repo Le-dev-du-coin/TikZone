@@ -585,14 +585,14 @@ export default function RouterReportsPage({ params }: PageProps) {
                   onClick={handleDownloadReportPdf}
                   disabled={isGeneratingPdf}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
-                  title="Génère un vrai PDF vectoriel A4 via Chromium Playwright"
+                  title="Télécharger le rapport financier au format PDF"
                 >
                   {isGeneratingPdf ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Download className="w-4 h-4" />
                   )}
-                  <span>{isGeneratingPdf ? "Génération Chromium..." : "Imprimer / Télécharger en PDF (Chromium)"}</span>
+                  <span>{isGeneratingPdf ? "Génération PDF..." : "Télécharger le PDF"}</span>
                 </button>
                 <button
                   type="button"

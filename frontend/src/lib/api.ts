@@ -437,7 +437,10 @@ export const api = {
     const res = await fetch(`${API_BASE}/routers/${routerId}/reports/pdf/`, {
       headers: getAuthHeaders(),
     });
-    if (!res.ok) throw new Error("Erreur lors de la génération du PDF Chromium");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Erreur lors de la génération du PDF" }));
+      throw new Error(err.detail || "Erreur lors de la génération du PDF");
+    }
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
