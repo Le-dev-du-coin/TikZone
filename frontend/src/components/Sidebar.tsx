@@ -5,7 +5,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
 import { formatFCFA } from "@/lib/utils";
 import {
-  CreditCard,
+  History,
   LayoutDashboard,
   LogOut,
   MessageCircle,
@@ -53,7 +53,12 @@ export default function Sidebar({
     {
       href: "/dashboard/wallet",
       label: "Portefeuille & Solde",
-      icon: CreditCard,
+      icon: Wallet,
+    },
+    {
+      href: "/dashboard/wallet/history",
+      label: "Historique des Paiements",
+      icon: History,
     },
     {
       href: "/dashboard/profile",

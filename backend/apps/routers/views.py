@@ -765,7 +765,8 @@ def get_saas_sales_report_data(router):
     total_revenue = int(sold_qs.aggregate(s=Sum("price"))["s"] or 0)
     total_count = sold_qs.count()
 
-    recent_tickets = qs.order_by("-created_at")[:100]
+    # Le journal de caisse ne recense que les ventes effectives (tickets activés / consommés)
+    recent_tickets = sold_qs.order_by("-first_login_at", "-created_at")[:100]
     sales_history = [
         {
             "id": str(t.id),

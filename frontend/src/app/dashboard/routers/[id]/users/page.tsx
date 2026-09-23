@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Layers,
   Plus,
+  Printer,
   RefreshCw,
   Search,
   Ticket,
@@ -83,6 +84,33 @@ export default function RouterUsersPage({ params }: PageProps) {
   const [genPrice, setGenPrice] = useState(100);
   const [genComment, setGenComment] = useState("");
 
+  // Impression des tickets
+  const [routerData, setRouterData] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("tikzone_cached_routers");
+        if (cached) {
+          const list = JSON.parse(cached);
+          const found = list.find((r: any) => r.id === routerId);
+          if (found) return found;
+        }
+      } catch {}
+    }
+    return null;
+  });
+  const [printTickets, setPrintTickets] = useState<any[]>([]);
+
+  const handlePrintTickets = (ticketList: any[]) => {
+    if (!ticketList || ticketList.length === 0) {
+      alert("Aucun ticket à imprimer pour cette sélection.");
+      return;
+    }
+    setPrintTickets(ticketList);
+    setTimeout(() => {
+      window.print();
+    }, 250);
+  };
+
   // Notifications
   const [actionLoading, setActionLoading] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -92,10 +120,15 @@ export default function RouterUsersPage({ params }: PageProps) {
     setLoading(true);
     try {
       // 100% Cloud Hotspot Natif : seuls les tickets Cloud sont gérés
-      const [saasRes, profRes] = await Promise.all([
+      const [saasRes, profRes, routersList] = await Promise.all([
         api.getSaaSTickets(routerId).catch(() => ({ results: [] })),
         api.getRouterProfiles(routerId, { active_only: true }).catch(() => ({ results: [] })),
+        api.getRouters().catch(() => []),
       ]);
+      if (Array.isArray(routersList) && routersList.length > 0) {
+        const found = routersList.find((r: any) => r.id === routerId);
+        if (found) setRouterData(found);
+      }
 
       const parsedSaaSTickets = (saasRes.results || []).map((t: any) => ({
         id: t.id,
@@ -313,14 +346,26 @@ export default function RouterUsersPage({ params }: PageProps) {
 
         <div className="flex items-center gap-2 flex-wrap">
           {viewMode === "TABLE" && (
-            <button
-              type="button"
-              onClick={() => setViewMode("CARDS")}
-              className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Layers className="w-3.5 h-3.5 text-blue-600" />
-              <span>Vue par Profils</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setViewMode("CARDS")}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Layers className="w-3.5 h-3.5 text-blue-600" />
+                <span>Vue par Profils</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handlePrintTickets(filteredUsers)}
+                className="px-3.5 py-2 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Imprimer les tickets de cette vue"
+              >
+                <Printer className="w-3.5 h-3.5 text-blue-600" />
+                <span>Imprimer ({filteredUsers.length})</span>
+              </button>
+            </>
           )}
 
           <button
@@ -372,14 +417,14 @@ export default function RouterUsersPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-4 mt-3 border-t border-white/20 text-xs font-bold">
+              <div className="grid grid-cols-3 gap-1.5 pt-4 mt-3 border-t border-white/20 text-xs font-bold">
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedProfile("ALL");
                     setViewMode("TABLE");
                   }}
-                  className="flex-1 py-1.5 px-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Ouvrir</span>
@@ -387,10 +432,19 @@ export default function RouterUsersPage({ params }: PageProps) {
                 <button
                   type="button"
                   onClick={() => handleOpenGenerateModal("ALL")}
-                  className="flex-1 py-1.5 px-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-300" />
                   <span>Générer</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintTickets(users)}
+                  className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  title="Imprimer tous les tickets"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimer</span>
                 </button>
               </div>
             </div>
@@ -398,7 +452,7 @@ export default function RouterUsersPage({ params }: PageProps) {
             {/* Cartes par Profil individuel */}
             {profiles.map((p, idx) => {
               const palette = CARD_PALETTES[(idx + 1) % CARD_PALETTES.length];
-              const pKey = (p.name || "default").trim().toLowerCase();
+              const pKey = (p.name || "").trim().toLowerCase();
               const count = profileCounts[pKey] || 0;
 
               return (
@@ -423,14 +477,14 @@ export default function RouterUsersPage({ params }: PageProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-4 mt-3 border-t border-white/20 text-xs font-bold">
+                  <div className="grid grid-cols-3 gap-1.5 pt-4 mt-3 border-t border-white/20 text-xs font-bold">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedProfile(p.name);
                         setViewMode("TABLE");
                       }}
-                      className="flex-1 py-1.5 px-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>Ouvrir</span>
@@ -438,10 +492,23 @@ export default function RouterUsersPage({ params }: PageProps) {
                     <button
                       type="button"
                       onClick={() => handleOpenGenerateModal(p.name)}
-                      className="flex-1 py-1.5 px-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Zap className="w-3.5 h-3.5 text-amber-300" />
                       <span>Générer</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handlePrintTickets(
+                          users.filter((u) => (u.profile || "").trim().toLowerCase() === pKey)
+                        )
+                      }
+                      className="py-1.5 px-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      title={`Imprimer les tickets du profil ${p.name}`}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Imprimer</span>
                     </button>
                   </div>
                 </div>
@@ -482,6 +549,16 @@ export default function RouterUsersPage({ params }: PageProps) {
                   </option>
                 ))}
               </select>
+
+              <button
+                type="button"
+                onClick={() => handlePrintTickets(filteredUsers)}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold transition-all shadow-xs hover:opacity-90 flex items-center gap-1.5 cursor-pointer shrink-0"
+                title="Imprimer les tickets actuellement filtrés"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Imprimer ({filteredUsers.length})</span>
+              </button>
             </div>
           </div>
 
@@ -502,6 +579,15 @@ export default function RouterUsersPage({ params }: PageProps) {
                   className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 transition-colors cursor-pointer"
                 >
                   Désélectionner tout
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePrintTickets(filteredUsers.filter((u) => selectedIds.has(u.id)))}
+                  className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimer ({selectedIds.size})</span>
                 </button>
 
                 <button
@@ -875,6 +961,133 @@ export default function RouterUsersPage({ params }: PageProps) {
           </div>
         </div>
       )}
+
+      {/* Zone d'impression universelle A4 découpable */}
+      {printTickets.length > 0 && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs p-4 flex flex-col items-center justify-start no-print">
+          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600">
+                  <Printer className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Impression des Tickets Hotspot ({printTickets.length})
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Prêt pour impression thermique ou format A4 découpable.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Imprimer maintenant</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrintTickets([])}
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Grille A4 Découpable (4 colonnes, cadrage exact non rogné) */}
+            <div id="print-area" className="vouchers-grid grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white p-3 sm:p-5 rounded-2xl border border-slate-200 text-slate-950">
+              {printTickets.map((t, idx) => {
+                const hotspotTitle = (routerData?.hotspot_name || routerData?.name || "TIKZONE HOTSPOT").toUpperCase();
+                return (
+                  <div
+                    key={t.id || idx}
+                    className="voucher-card border-[1.5px] border-slate-900 rounded-md p-2 bg-white text-slate-950 flex flex-col justify-between select-none"
+                    style={{ minHeight: "110px" }}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between font-black text-[11px] uppercase tracking-tight">
+                        <span className="truncate pr-1">{hotspotTitle}</span>
+                        <span className="shrink-0 text-[10px]">[{idx + 1}]</span>
+                      </div>
+                      <div className="border-b-[1.5px] border-slate-900 my-0.5"></div>
+                    </div>
+
+                    <div className="my-auto py-1 text-center space-y-0.5">
+                      {t.password && t.password !== t.name ? (
+                        <div className="space-y-1 bg-slate-50 border-[1.5px] border-slate-900 rounded p-1">
+                          <div className="flex items-center justify-between text-[9px] font-bold">
+                            <span className="text-slate-600 uppercase">Utilisateur :</span>
+                            <span className="font-mono font-black text-slate-950 text-xs">{t.name}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[9px] font-bold border-t border-slate-300 pt-0.5">
+                            <span className="text-slate-600 uppercase">Mot de passe :</span>
+                            <span className="font-mono font-black text-rose-600 text-xs">{t.password}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-600">
+                            Code Ticket (PIN)
+                          </div>
+                          <div className="border-[1.5px] border-slate-900 rounded px-2 py-0.5 text-sm font-black font-mono tracking-widest bg-slate-50">
+                            {t.name}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="border-[1.5px] border-slate-900 rounded px-1 py-0.5 text-center text-[10px] font-black uppercase tracking-tight bg-slate-50 mt-0.5">
+                      Pass {t.time_limit || t.profile || "3h"} — {t.price ? `${t.price} FCFA` : "Actif"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Style d'impression Découpable A4 & Thermique */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #print-area,
+          #print-area * {
+            visibility: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #print-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .vouchers-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 6px !important;
+            padding: 0 !important;
+            border: none !important;
+          }
+          .voucher-card {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
