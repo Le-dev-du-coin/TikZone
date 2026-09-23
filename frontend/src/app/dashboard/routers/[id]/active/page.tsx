@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  Eye,
   HardDrive,
   LogOut,
   Radio,
@@ -15,6 +16,7 @@ import {
   Search,
   ShieldAlert,
   SlidersHorizontal,
+  Smartphone,
   Upload,
   Wifi,
   X,
@@ -45,6 +47,9 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Modal de détail de la session active
+  const [selectedActiveDetails, setSelectedActiveDetails] = useState<any | null>(null);
 
   // Modal d'édition des limites du ticket
   const [editingSession, setEditingSession] = useState<any | null>(null);
@@ -217,9 +222,14 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
                 </tr>
               ) : (
                 filtered.map((u, idx) => (
-                  <tr key={u.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr
+                    key={u.id || idx}
+                    onClick={() => setSelectedActiveDetails(u)}
+                    className="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                    title="Cliquer pour afficher tous les détails de cette session active"
+                  >
                     <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white">
-                      <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 text-xs">
+                      <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 text-xs group-hover:text-blue-600 transition-colors">
                         {u.user}
                       </span>
                     </td>
@@ -263,7 +273,22 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
-                          onClick={() => handleOpenEdit(u)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedActiveDetails(u);
+                          }}
+                          className="p-1.5 bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-950/40 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 rounded-lg transition-colors cursor-pointer"
+                          title="Voir les détails complets de la session"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEdit(u);
+                          }}
                           className="p-1.5 bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-950/40 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 rounded-lg transition-colors cursor-pointer"
                           title="Modifier les limites (Temps / Quota)"
                         >
@@ -272,7 +297,10 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
 
                         <button
                           type="button"
-                          onClick={() => handleDisconnect(u.id, u.user)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDisconnect(u.id, u.user);
+                          }}
                           disabled={disconnectingId === u.id}
                           className="p-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-lg transition-colors cursor-pointer"
                           title="Déconnecter l'appareil immédiatement (Kick)"
@@ -367,6 +395,164 @@ export default function RouterActiveSessionsPage({ params }: PageProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DÉTAIL SESSION ACTIVE */}
+      {selectedActiveDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 my-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <Radio className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-white text-base">
+                    Session Active Hotspot
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>En ligne en direct</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedActiveDetails(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Identifiant Coupon / Client */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  Ticket Connecté
+                </span>
+                <div className="text-xl sm:text-2xl font-black font-mono tracking-wider text-slate-900 dark:text-white">
+                  {selectedActiveDetails.user}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  Forfait : <span className="font-bold text-blue-600 dark:text-blue-400">{selectedActiveDetails.profile || "Standard"}</span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Tarif Forfait</span>
+                <div className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                  {selectedActiveDetails.price || "100 FCFA"}
+                </div>
+              </div>
+            </div>
+
+            {/* Grille Métriques Session */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Wifi className="w-3 h-3 text-blue-500" /> Adresse IP
+                </span>
+                <div className="font-mono font-bold text-slate-900 dark:text-white truncate">
+                  {selectedActiveDetails.address || "—"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-emerald-500" /> Uptime Écoulé
+                </span>
+                <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {selectedActiveDetails.uptime || "0s"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-500" /> Temps Restant
+                </span>
+                <div className="font-mono font-bold text-slate-900 dark:text-white">
+                  {selectedActiveDetails.session_time_left || "Illimité"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Upload className="w-3 h-3 text-indigo-500" /> Téléversement
+                </span>
+                <div className="font-mono font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                  ↑ {selectedActiveDetails.bytes_out || "0 B"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Download className="w-3 h-3 text-sky-500" /> Téléchargement
+                </span>
+                <div className="font-mono font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                  ↓ {selectedActiveDetails.bytes_in || "0 B"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <HardDrive className="w-3 h-3 text-teal-500" /> Total Trafic
+                </span>
+                <div className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
+                  {selectedActiveDetails.total_traffic || "0 B"}
+                </div>
+              </div>
+            </div>
+
+            {/* Adresse MAC & Appareil */}
+            <div className="text-xs bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 font-mono flex items-center justify-between">
+              <span className="text-slate-400 font-sans flex items-center gap-1">
+                <Smartphone className="w-3.5 h-3.5" /> Adresse MAC client :
+              </span>
+              <span className="font-bold text-slate-900 dark:text-white">{selectedActiveDetails.mac_address || "—"}</span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  const s = selectedActiveDetails;
+                  setSelectedActiveDetails(null);
+                  handleDisconnect(s.id, s.user);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Déconnecter immédiatement"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Déconnecter (Kick)</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const s = selectedActiveDetails;
+                    setSelectedActiveDetails(null);
+                    handleOpenEdit(s);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Ajuster Limites</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedActiveDetails(null)}
+                  className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

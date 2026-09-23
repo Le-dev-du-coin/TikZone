@@ -20,6 +20,7 @@ RADIUS_CODE_ACCOUNTING_RESPONSE = 5
 # Types d'attributs standards
 ATTR_USER_NAME = 1
 ATTR_USER_PASSWORD = 2
+ATTR_CHAP_PASSWORD = 3
 ATTR_NAS_IP_ADDRESS = 4
 ATTR_NAS_PORT = 5
 ATTR_SESSION_TIMEOUT = 27
@@ -30,6 +31,8 @@ ATTR_ACCT_INPUT_OCTETS = 42
 ATTR_ACCT_OUTPUT_OCTETS = 43
 ATTR_ACCT_SESSION_ID = 44
 ATTR_ACCT_SESSION_TIME = 46
+ATTR_CHAP_CHALLENGE = 60
+ATTR_MESSAGE_AUTHENTICATOR = 80
 ATTR_VENDOR_SPECIFIC = 26
 
 # MikroTik Vendor ID
@@ -297,11 +300,11 @@ class RadiusEngineService:
     @staticmethod
     def generate_mikrotik_radius_setup_script(router: Router, secret: str = "tikzone-radius-secret-2026") -> str:
         """Génère la commande RouterOS pour raccorder le routeur au moteur RADIUS Cloud TikZone."""
-        endpoint_host = getattr(settings, "VPN_SERVER_HOST", "187.7.20.53")
+        endpoint_host = getattr(settings, "RADIUS_SERVER_IP", "172.29.88.1")
         return (
             f"/radius remove [find comment=\"TikZone RADIUS\"]\n"
             f"/radius remove [find comment=\"Mikroot RADIUS\"]\n"
-            f"/radius add service=hotspot address={endpoint_host} secret=\"{secret}\" authentication-port=1812 accounting-port=1813 timeout=3000ms comment=\"TikZone RADIUS\"\n"
-            f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m login-by=http-chap,http-pap,mac-cookie\n"
+            f"/radius add service=hotspot address={endpoint_host} secret=\"{secret}\" authentication-port=1812 accounting-port=1813 timeout=3000ms require-message-auth=no comment=\"TikZone RADIUS\"\n"
+            f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m login-by=http-pap,mac-cookie\n"
             f"/radius incoming set accept=yes port=3799\n"
         )

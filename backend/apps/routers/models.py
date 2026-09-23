@@ -244,13 +244,13 @@ class VpnCredential(models.Model):
         router_hotspot_type = getattr(self.router, "hotspot_type", Router.HotspotType.RADIUS)
         if router_hotspot_type == Router.HotspotType.RADIUS:
             secret = getattr(settings, "RADIUS_SECRET", "tikzone-radius-secret-2026")
-            radius_host = endpoint_host
+            radius_host = getattr(settings, "RADIUS_SERVER_IP", "172.29.88.1")
             radius_block = (
                 f"\n\n# === MOTEUR CLOUD RADIUS TIKZONE (ZÉRO-CLIC) ===\n"
                 f"/radius remove [find comment=\"TikZone RADIUS\"]\n"
                 f"/radius remove [find comment=\"Mikroot RADIUS\"]\n"
-                f"/radius add service=hotspot address={radius_host} secret=\"{secret}\" authentication-port=1812 accounting-port=1813 timeout=3000ms comment=\"TikZone RADIUS\"\n"
-                f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m login-by=http-chap,http-pap,mac-cookie\n"
+                f"/radius add service=hotspot address={radius_host} secret=\"{secret}\" authentication-port=1812 accounting-port=1813 timeout=3000ms require-message-auth=no comment=\"TikZone RADIUS\"\n"
+                f"/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=3m login-by=http-pap,mac-cookie\n"
                 f"/radius incoming set accept=yes port=3799"
             )
             script += radius_block

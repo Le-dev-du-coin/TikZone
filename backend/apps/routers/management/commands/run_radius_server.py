@@ -1,9 +1,16 @@
 import asyncio
 import logging
+import sys
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from apps.routers.services.radius_server import start_radius_services
 
+# Forcer l'affichage immédiat sur stdout pour systemd
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 logger = logging.getLogger("radius_server")
 
 

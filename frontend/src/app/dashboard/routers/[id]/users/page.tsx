@@ -5,16 +5,22 @@ import { api } from "@/lib/api";
 import {
   AlertCircle,
   ArrowLeft,
+  Calendar,
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
   Download,
   ExternalLink,
+  Eye,
+  HardDrive,
   Layers,
   Loader2,
   Plus,
   Printer,
   RefreshCw,
   Search,
+  Smartphone,
   Ticket,
   Trash2,
   Users,
@@ -101,6 +107,14 @@ export default function RouterUsersPage({ params }: PageProps) {
   });
   const [printTickets, setPrintTickets] = useState<any[]>([]);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [selectedTicketDetails, setSelectedTicketDetails] = useState<any | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
 
   const handlePrintTickets = (ticketList: any[]) => {
     if (!ticketList || ticketList.length === 0) {
@@ -152,12 +166,19 @@ export default function RouterUsersPage({ params }: PageProps) {
         profile: t.profile || "",
         comment: t.comment || "Ticket Cloud Hotspot",
         uptime: t.uptime_used_seconds ? `${Math.floor(t.uptime_used_seconds / 60)}m` : "0s",
-        bytes_in: t.bytes_in,
-        bytes_out: t.bytes_out,
+        uptime_used_seconds: t.uptime_used_seconds || 0,
+        bytes_in: t.bytes_in || 0,
+        bytes_out: t.bytes_out || 0,
         source: "saas",
-        status: t.status,
+        status: t.status || "NEW",
         price: t.price,
         time_limit: t.time_limit,
+        time_limit_seconds: t.time_limit_seconds,
+        created_at: t.created_at,
+        first_login_at: t.first_login_at,
+        last_login_at: t.last_login_at,
+        expires_at: t.expires_at,
+        mac_address: t.mac_address || "",
       }));
 
       // Suppression stricte et totale de tout profil "default" fantôme
@@ -655,23 +676,25 @@ export default function RouterUsersPage({ params }: PageProps) {
                       />
                     </th>
                     <th className="px-4 py-3.5">Code / Utilisateur</th>
+                    <th className="px-4 py-3.5">Statut</th>
                     <th className="px-4 py-3.5">Profil</th>
                     <th className="px-4 py-3.5">Temps Utilisé</th>
                     <th className="px-4 py-3.5">Durée Prévue</th>
-                    <th className="px-4 py-3.5">Consommation (Haut / Bas)</th>
+                    <th className="px-4 py-3.5">Consommation</th>
                     <th className="px-4 py-3.5">Commentaire (Lot)</th>
+                    <th className="px-4 py-3.5 text-right">Détails</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
                   {loading && users.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400 font-sans">
+                      <td colSpan={9} className="px-4 py-8 text-center text-slate-400 font-sans">
                         Lecture des tickets RouterOS...
                       </td>
                     </tr>
                   ) : filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400 font-sans">
+                      <td colSpan={9} className="px-4 py-8 text-center text-slate-400 font-sans">
                         Aucun ticket trouvé pour ce profil ou cette recherche.
                       </td>
                     </tr>
@@ -682,10 +705,11 @@ export default function RouterUsersPage({ params }: PageProps) {
                       return (
                         <tr
                           key={u.id || idx}
-                          onClick={() => u.id && handleToggleSelect(u.id)}
-                          className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors cursor-pointer ${
-                            isChecked ? "bg-blue-50/50 dark:bg-blue-950/30" : ""
+                          onClick={() => setSelectedTicketDetails(u)}
+                          className={`hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group ${
+                            isChecked ? "bg-blue-50/60 dark:bg-blue-950/40" : ""
                           }`}
+                          title="Cliquer pour afficher tous les détails de ce ticket"
                         >
                           <td
                             className="px-4 py-3 text-center"
@@ -700,7 +724,7 @@ export default function RouterUsersPage({ params }: PageProps) {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-xs">
+                              <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                 {u.name}
                               </span>
                               {u.source === "saas" ? (
@@ -715,6 +739,19 @@ export default function RouterUsersPage({ params }: PageProps) {
                             </div>
                           </td>
                           <td className="px-4 py-3 font-sans">
+                            <span
+                              className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                                u.status === "ACTIVE"
+                                  ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                                  : u.status === "EXPIRED"
+                                  ? "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300"
+                                  : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
+                              }`}
+                            >
+                              {u.status === "ACTIVE" ? "En cours" : u.status === "EXPIRED" ? "Expiré" : "Prêt"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-sans">
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                               {u.profile}
                             </span>
@@ -723,13 +760,26 @@ export default function RouterUsersPage({ params }: PageProps) {
                             {u.uptime || "0s"}
                           </td>
                           <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                            {u.limit_uptime || "Illimité"}
+                            {u.time_limit || u.limit_uptime || "Illimité"}
                           </td>
                           <td className="px-4 py-3 text-slate-600 dark:text-slate-300 text-[11px]">
-                            ↑ {u.bytes_out} / ↓ {u.bytes_in}
+                            ↑ {u.bytes_out ? `${(u.bytes_out / (1024 * 1024)).toFixed(1)}M` : "0M"} / ↓ {u.bytes_in ? `${(u.bytes_in / (1024 * 1024)).toFixed(1)}M` : "0M"}
                           </td>
                           <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-sans text-[11px] truncate max-w-xs">
                             {u.comment || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTicketDetails(u);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              title="Voir les détails"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
                           </td>
                         </tr>
                       );
@@ -991,6 +1041,191 @@ export default function RouterUsersPage({ params }: PageProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE DÉTAIL DU TICKET */}
+      {selectedTicketDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 max-w-xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 my-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                  <Ticket className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-white text-base">
+                    Détail du Ticket Hotspot
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Métadonnées complètes et consommation en temps réel.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTicketDetails(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Code Coupon Principal */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  Code Coupon / Identifiant
+                </span>
+                <div className="text-xl sm:text-2xl font-black font-mono tracking-wider text-slate-900 dark:text-white">
+                  {selectedTicketDetails.name}
+                </div>
+                {selectedTicketDetails.password && selectedTicketDetails.password !== selectedTicketDetails.name && (
+                  <div className="text-xs font-mono text-slate-500 mt-0.5">
+                    Mot de passe : <span className="font-bold text-slate-700 dark:text-slate-300">{selectedTicketDetails.password}</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleCopyCode(selectedTicketDetails.name)}
+                className="px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Copier le code coupon"
+              >
+                {copiedCode ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedCode ? "Copié !" : "Copier"}</span>
+              </button>
+            </div>
+
+            {/* Grille d'informations */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Layers className="w-3 h-3 text-blue-500" /> Forfait
+                </span>
+                <div className="font-black text-slate-900 dark:text-white truncate">
+                  {selectedTicketDetails.profile || "Standard"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-amber-500" /> Statut
+                </span>
+                <div>
+                  <span
+                    className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                      selectedTicketDetails.status === "ACTIVE"
+                        ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                        : selectedTicketDetails.status === "EXPIRED"
+                        ? "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300"
+                        : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
+                    }`}
+                  >
+                    {selectedTicketDetails.status === "ACTIVE"
+                      ? "En cours"
+                      : selectedTicketDetails.status === "EXPIRED"
+                      ? "Expiré"
+                      : "Prêt"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-purple-500" /> Validité
+                </span>
+                <div className="font-bold text-slate-900 dark:text-white">
+                  {selectedTicketDetails.time_limit || "Illimité"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Temps Consommé</span>
+                <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {selectedTicketDetails.uptime || "0s"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Prix de Vente</span>
+                <div className="font-bold text-slate-900 dark:text-white">
+                  {selectedTicketDetails.price ? `${selectedTicketDetails.price} FCFA` : "—"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
+                  <HardDrive className="w-3 h-3 text-sky-500" /> Données In / Out
+                </span>
+                <div className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
+                  ↑ {selectedTicketDetails.bytes_out ? `${(selectedTicketDetails.bytes_out / (1024 * 1024)).toFixed(1)}M` : "0M"} / ↓ {selectedTicketDetails.bytes_in ? `${(selectedTicketDetails.bytes_in / (1024 * 1024)).toFixed(1)}M` : "0M"}
+                </div>
+              </div>
+            </div>
+
+            {/* Métadonnées & Appareil */}
+            <div className="space-y-1.5 text-xs bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 font-mono">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                <span className="text-slate-400 font-sans flex items-center gap-1">
+                  <Smartphone className="w-3.5 h-3.5" /> Appareil lié (MAC) :
+                </span>
+                <span className="font-bold">{selectedTicketDetails.mac_address || "Non verrouillé (Tout appareil)"}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                <span className="text-slate-400 font-sans flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" /> Lot / Réf :
+                </span>
+                <span className="truncate max-w-[260px] text-right font-sans">{selectedTicketDetails.comment || "—"}</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  const toDeleteId = selectedTicketDetails.id;
+                  if (!toDeleteId) return;
+                  if (confirm(`Supprimer définitivement le ticket '${selectedTicketDetails.name}' ?`)) {
+                    setSelectedTicketDetails(null);
+                    api.deleteSaaSTickets(routerId, [toDeleteId]).then(() => {
+                      setActionSuccess("Ticket supprimé avec succès.");
+                      loadData();
+                    }).catch((err) => setActionError(err.message));
+                  }
+                }}
+                className="px-3.5 py-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Supprimer</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = selectedTicketDetails;
+                    setSelectedTicketDetails(null);
+                    handlePrintTickets([t]);
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Imprimer</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTicketDetails(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
