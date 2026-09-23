@@ -235,12 +235,15 @@ export default function RouterUsersPage({ params }: PageProps) {
     loadData();
   }, [routerId]);
 
-  // Décompte universel et tolérant des tickets par profil
+  // Décompte universel et tolérant des tickets par profil (hors tickets expirés)
   const getTicketsForProfile = (pName: string, pTimeout?: string) => {
     const targetName = (pName || "").trim().toLowerCase();
     const targetTimeout = (pTimeout || "").trim().toLowerCase();
 
     return users.filter((u) => {
+      // Exclusion stricte des tickets expirés de l'inventaire du forfait
+      if (u.status === "EXPIRED") return false;
+
       const uProf = (u.profile || "").trim().toLowerCase();
       const uLimit = (u.time_limit || "").trim().toLowerCase();
 
@@ -258,6 +261,9 @@ export default function RouterUsersPage({ params }: PageProps) {
 
   // Filtrage des tickets pour la vue tableau
   const filteredUsers = users.filter((u) => {
+    // Exclusion des tickets expirés du tableau d'inventaire
+    if (u.status === "EXPIRED") return false;
+
     const matchesSearch =
       (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
       (u.comment && u.comment.toLowerCase().includes(search.toLowerCase()));

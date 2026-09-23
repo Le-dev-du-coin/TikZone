@@ -70,6 +70,8 @@ export default function RouterReportsPage({ params }: PageProps) {
   const monthCount = report?.month_count || 0;
   const activeSessions = report?.active_sessions || 0;
   const totalUsers = report?.total_users || 0;
+  const totalRev = report?.total_revenue || 0;
+  const totalCount = report?.total_count || 0;
 
   const [loading, setLoading] = useState(() => !report);
   const [search, setSearch] = useState("");
@@ -416,10 +418,20 @@ export default function RouterReportsPage({ params }: PageProps) {
                       {item.price.toLocaleString("fr-FR")} FCFA
                     </td>
                     <td className="px-5 py-3 text-right font-sans">
-                      {item.consumed ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Actif / Consommé</span>
+                      {item.status === "ACTIVE" ? (
+                        <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>En cours</span>
+                        </span>
+                      ) : item.status === "EXPIRED" ? (
+                        <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px] font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Expiré</span>
+                        </span>
+                      ) : item.consumed ? (
+                        <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300 text-[11px] font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Consommé</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-slate-400 text-[11px]">
@@ -652,11 +664,11 @@ export default function RouterReportsPage({ params }: PageProps) {
                   <span className="text-[10px] text-slate-500">{monthCount} ticket(s)</span>
                 </div>
                 <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
-                  <span className="text-[10px] font-bold uppercase text-slate-500">Sessions Actives</span>
-                  <div className="text-lg font-black text-amber-600 font-mono mt-0.5">
-                    {activeSessions} client(s)
+                  <span className="text-[10px] font-bold uppercase text-slate-500">Total Encaissé</span>
+                  <div className="text-lg font-black text-slate-900 font-mono mt-0.5">
+                    {totalRev.toLocaleString()} FCFA
                   </div>
-                  <span className="text-[10px] text-slate-500">{totalUsers} tickets créés</span>
+                  <span className="text-[10px] text-slate-500">{totalCount} ventes cumulées</span>
                 </div>
               </div>
 
@@ -669,22 +681,32 @@ export default function RouterReportsPage({ params }: PageProps) {
                       <th className="px-3 py-2">Forfait / Profil</th>
                       <th className="px-3 py-2">Montant</th>
                       <th className="px-3 py-2">Date / Heure</th>
+                      <th className="px-3 py-2 text-right">Statut</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-mono">
                     {history.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-3 py-4 text-center text-slate-400 font-sans">
+                        <td colSpan={5} className="px-3 py-4 text-center text-slate-400 font-sans">
                           Aucune vente enregistrée.
                         </td>
                       </tr>
                     ) : (
-                      history.slice(0, 15).map((s: any, idx: number) => (
+                      history.slice(0, 20).map((s: any, idx: number) => (
                         <tr key={idx}>
                           <td className="px-3 py-2 font-bold">{s.code || s.name}</td>
                           <td className="px-3 py-2">{s.profile || "Défaut"}</td>
                           <td className="px-3 py-2 font-bold text-emerald-600">{s.price || 100} FCFA</td>
                           <td className="px-3 py-2 text-slate-500">{s.date || s.created_at || "—"}</td>
+                          <td className="px-3 py-2 text-right font-sans text-[11px] font-bold">
+                            {s.status === "ACTIVE" ? (
+                              <span className="text-emerald-600">En cours</span>
+                            ) : s.status === "EXPIRED" ? (
+                              <span className="text-slate-500">Expiré</span>
+                            ) : (
+                              <span className="text-slate-400">Prêt</span>
+                            )}
+                          </td>
                         </tr>
                       ))
                     )}

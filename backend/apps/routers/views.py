@@ -379,7 +379,11 @@ class RouterHotspotOverviewView(APIView):
         except Router.DoesNotExist:
             return Response({"detail": "Routeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        total_users_count = HotspotTicket.objects.filter(router=router).count()
+        total_users_count = (
+            HotspotTicket.objects.filter(router=router)
+            .exclude(status=HotspotTicket.Status.EXPIRED)
+            .count()
+        )
         profiles_count = CloudHotspotProfile.objects.filter(router=router, is_active=True).count()
 
         now = timezone.now()
@@ -476,6 +480,9 @@ class RouterHotspotOverviewView(APIView):
                         if m_info.get("mac-address") and not db_t.mac_address:
                             db_t.mac_address = m_info.get("mac-address")
                             fields_to_save.append("mac_address")
+                        if m_info.get("address") and db_t.ip_address != m_info.get("address"):
+                            db_t.ip_address = m_info.get("address")
+                            fields_to_save.append("ip_address")
 
                         # Détection expiration : kick et clôture
                         if (ros_time_left is not None and ros_time_left <= 0) or db_t.remaining_seconds <= 0:
@@ -1187,8 +1194,11 @@ class RouterSaaSTicketsView(APIView):
 
         # Filtre par statut
         ticket_status = request.query_params.get("status")
+        include_expired = request.query_params.get("include_expired", "false").lower() == "true"
         if ticket_status:
             qs = qs.filter(status=ticket_status)
+        elif not include_expired:
+            qs = qs.exclude(status=HotspotTicket.Status.EXPIRED)
 
         # Recherche texte
         search = request.query_params.get("search", "").strip()

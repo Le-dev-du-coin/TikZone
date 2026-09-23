@@ -14,9 +14,10 @@ def generate_sales_report_pdf(router: Router, report_data: Dict[str, Any]) -> by
 
     today_rev = report_data.get("today_revenue", 0)
     month_rev = report_data.get("month_revenue", 0)
+    total_rev = report_data.get("total_revenue", 0)
     today_count = report_data.get("today_count", 0)
-    active_sessions = report_data.get("active_sessions", 0)
-    total_users = report_data.get("total_users", 0)
+    month_count = report_data.get("month_count", 0)
+    total_count = report_data.get("total_count", 0)
     sales = report_data.get("sales_history", [])
 
     rows_html = ""
@@ -26,8 +27,19 @@ def generate_sales_report_pdf(router: Router, report_data: Dict[str, Any]) -> by
         price = s.get("price", 100)
         batch = s.get("batch_id", "Direct")
         date_val = s.get("date", today_str)
-        consumed = "Consommé" if s.get("consumed") else "Non actif"
-        status_color = "#059669" if s.get("consumed") else "#64748b"
+        st = s.get("status", "")
+        if st == "ACTIVE":
+            consumed = "En cours"
+            status_color = "#059669"
+        elif st == "EXPIRED":
+            consumed = "Expiré"
+            status_color = "#64748b"
+        elif s.get("consumed"):
+            consumed = "Consommé"
+            status_color = "#64748b"
+        else:
+            consumed = "Non activé"
+            status_color = "#94a3b8"
 
         rows_html += f"""
         <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -53,10 +65,10 @@ def generate_sales_report_pdf(router: Router, report_data: Dict[str, Any]) -> by
   .brand {{ font-size: 20px; font-weight: 900; color: #2563eb; letter-spacing: -0.5px; }}
   .subtitle {{ font-size: 11px; color: #64748b; margin-top: 2px; }}
   .meta {{ text-align: right; font-size: 11px; color: #64748b; }}
-  .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }}
-  .kpi-card {{ border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; background: #f8fafc; }}
+  .kpi-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }}
+  .kpi-card {{ border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; background: #f8fafc; }}
   .kpi-title {{ font-size: 10px; text-transform: uppercase; font-weight: bold; color: #64748b; }}
-  .kpi-value {{ font-size: 18px; font-weight: 900; margin-top: 4px; }}
+  .kpi-value {{ font-size: 20px; font-weight: 900; margin-top: 4px; }}
   .table-title {{ font-size: 13px; font-weight: 800; margin-bottom: 10px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }}
   table {{ width: 100%; border-collapse: collapse; text-align: left; }}
   th {{ background: #f1f5f9; padding: 8px 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #cbd5e1; }}
@@ -79,22 +91,17 @@ def generate_sales_report_pdf(router: Router, report_data: Dict[str, Any]) -> by
     <div class="kpi-card">
       <div class="kpi-title">Recettes Aujourd'hui</div>
       <div class="kpi-value" style="color: #059669;">{today_rev:,} FCFA</div>
-      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">{today_count} ticket(s) actif(s)</div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">{today_count} vente(s) encaissée(s)</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-title">Recettes du Mois</div>
       <div class="kpi-value" style="color: #2563eb;">{month_rev:,} FCFA</div>
-      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Ventes cumulées</div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">{month_count} vente(s) cumulée(s)</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-title">Sessions Actives</div>
-      <div class="kpi-value" style="color: #d97706;">{active_sessions}</div>
-      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">En direct sur MikroTik</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-title">Parc Total Tickets</div>
-      <div class="kpi-value" style="color: #475569;">{total_users:,}</div>
-      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Utilisateurs créés</div>
+      <div class="kpi-title">Total Encaissé (CA Cumulé)</div>
+      <div class="kpi-value" style="color: #0f172a;">{total_rev:,} FCFA</div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">{total_count} tickets consommés</div>
     </div>
   </div>
 
@@ -154,8 +161,8 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
     hotspot_title = (router.hotspot_name or router.name or "TIKZONE HOTSPOT").strip().upper()
 
     pages_html = ""
-    # Découpage par lots de 20 tickets par page A4
-    chunk_size = 20
+    # Découpage par lots de 24 tickets par page A4 (4 colonnes x 6 lignes)
+    chunk_size = 24
     chunks = [tickets[i:i + chunk_size] for i in range(0, len(tickets), chunk_size)]
     if not chunks:
         chunks = [[]]
@@ -167,18 +174,32 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
             code = getattr(t, "code", None) or (t.get("code") if isinstance(t, dict) else "-")
             password = getattr(t, "password", None) or (t.get("password") if isinstance(t, dict) else code)
             t_price = getattr(t, "price", None) or (t.get("price") if isinstance(t, dict) else 100)
-            t_limit = getattr(t, "time_limit", None) or (t.get("time_limit") if isinstance(t, dict) else None)
-            if not t_limit:
-                t_limit = getattr(t, "profile_name", None) or (t.get("profile") if isinstance(t, dict) else "3h")
+            
+            t_batch = getattr(t, "batch", None)
+            raw_limit = (
+                (t_batch.time_limit if t_batch and hasattr(t_batch, "time_limit") else None)
+                or getattr(t, "time_limit", None)
+                or (t.get("time_limit") if isinstance(t, dict) else None)
+                or getattr(t, "profile_name", None)
+                or (t.get("profile") if isinstance(t, dict) else "3h")
+            )
+            clean_limit = (
+                str(raw_limit)
+                .lower()
+                .replace("heures", "h")
+                .replace("heure", "h")
+                .replace(" ", "")
+                .upper()
+            )
 
             if password and password != code:
                 body_content = f"""
-                <div style="background: #f8fafc; border: 1.2px solid #0f172a; border-radius: 4px; padding: 4px; margin: 3px 0;">
-                    <div style="display: flex; justify-content: space-between; font-size: 8px; font-weight: bold;">
+                <div style="background: #f8fafc; border: 1.2px solid #0f172a; border-radius: 4px; padding: 3px 5px; margin: auto 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: bold;">
                         <span style="color: #64748b; text-transform: uppercase;">Utilisateur :</span>
                         <span style="font-family: monospace; font-weight: 900; color: #0f172a; font-size: 11px;">{code}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 8px; font-weight: bold; border-top: 1px solid #cbd5e1; margin-top: 2px; padding-top: 2px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: bold; border-top: 1px solid #cbd5e1; margin-top: 2px; padding-top: 2px;">
                         <span style="color: #64748b; text-transform: uppercase;">Mot de passe :</span>
                         <span style="font-family: monospace; font-weight: 900; color: #e11d48; font-size: 11px;">{password}</span>
                     </div>
@@ -186,9 +207,9 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
                 """
             else:
                 body_content = f"""
-                <div style="text-align: center; margin: 3px 0;">
-                    <div style="font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 2px;">Code Ticket (PIN)</div>
-                    <div style="font-family: monospace; font-weight: 900; font-size: 14px; letter-spacing: 2px; background: #f8fafc; border: 1.5px solid #0f172a; border-radius: 4px; padding: 3px 6px; display: inline-block; width: 92%;">
+                <div style="text-align: center; margin: auto 0; padding: 2px 0;">
+                    <div style="font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; margin-bottom: 2px;">Code Ticket (PIN)</div>
+                    <div style="font-family: monospace; font-weight: 900; font-size: 13.5px; letter-spacing: 2px; background: #f8fafc; border: 1.5px solid #0f172a; border-radius: 4px; padding: 2px 6px; display: inline-block; width: 92%;">
                         {code}
                     </div>
                 </div>
@@ -197,17 +218,17 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
             cards_html += f"""
             <div class="voucher-card">
                 <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.3px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.2px;">
                         <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;">{hotspot_title}</span>
-                        <span style="font-size: 9px; color: #475569;">[{global_idx}]</span>
+                        <span style="font-size: 9.5px; font-weight: 700; color: #0f172a;">[{global_idx}]</span>
                     </div>
                     <div style="border-bottom: 1.5px solid #0f172a; margin: 2px 0 3px 0;"></div>
                 </div>
 
                 {body_content}
 
-                <div style="border: 1.2px solid #0f172a; border-radius: 4px; padding: 2px; text-align: center; font-size: 9px; font-weight: 900; text-transform: uppercase; background: #f8fafc; margin-top: 2px;">
-                    Pass {t_limit} — {int(t_price)} FCFA
+                <div style="border: 1.5px solid #0f172a; border-radius: 4px; padding: 2px; text-align: center; font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.2px; background: #f8fafc; margin-top: auto;">
+                    Pass {clean_limit} — {int(t_price)} FCFA
                 </div>
             </div>
             """
@@ -247,26 +268,24 @@ def generate_tickets_pdf(router: Router, tickets: list, profile_name: str = "") 
   }}
   .sheet {{
     width: 100%;
-    min-height: 280mm;
     box-sizing: border-box;
     background: #ffffff;
   }}
   .tickets-grid {{
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: minmax(50mm, auto);
-    gap: 4mm;
+    gap: 3mm;
     width: 100%;
   }}
   .voucher-card {{
     border: 1.5px solid #0f172a;
     border-radius: 6px;
-    padding: 5px 7px;
+    padding: 6px 8px;
     background: #ffffff;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    height: 51mm;
+    height: 35mm;
     box-sizing: border-box;
     page-break-inside: avoid;
     break-inside: avoid;

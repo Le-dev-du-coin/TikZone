@@ -54,6 +54,7 @@ ATTR_USER_PASSWORD = 2
 ATTR_CHAP_PASSWORD = 3
 ATTR_NAS_IP_ADDRESS = 4
 ATTR_NAS_PORT = 5
+ATTR_FRAMED_IP_ADDRESS = 8
 ATTR_SESSION_TIMEOUT = 27
 ATTR_CALLING_STATION_ID = 31
 ATTR_NAS_IDENTIFIER = 32
@@ -100,6 +101,7 @@ class RadiusEngineService:
         password: str,
         nas_ip: str,
         mac_address: str = "",
+        ip_address: str = "",
     ) -> Tuple[bool, Dict[str, Any], str]:
         """
         Authentifie un ticket pour le portail captif MikroTik.
@@ -166,6 +168,10 @@ class RadiusEngineService:
             ticket.mac_address = mac_address
             fields_to_update.append("mac_address")
 
+        if ip_address:
+            ticket.ip_address = ip_address
+            fields_to_update.append("ip_address")
+
         ticket.last_login_at = now
         ticket.save(update_fields=list(set(fields_to_update)))
 
@@ -207,6 +213,7 @@ class RadiusEngineService:
         input_octets: int,
         output_octets: int,
         mac_address: str = "",
+        ip_address: str = "",
     ) -> bool:
         """
         Traite un paquet d'accounting (Start=1, Stop=2, Interim=3).
@@ -233,6 +240,10 @@ class RadiusEngineService:
         if mac_address and not ticket.mac_address:
             ticket.mac_address = mac_address
             fields_to_update.append("mac_address")
+
+        if ip_address:
+            ticket.ip_address = ip_address
+            fields_to_update.append("ip_address")
 
         # Si le temps est complètement épuisé
         if ticket.remaining_seconds <= 0:

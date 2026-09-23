@@ -14,6 +14,7 @@ from .radius_engine import (
     ATTR_ACCT_STATUS_TYPE,
     ATTR_CALLING_STATION_ID,
     ATTR_CHAP_PASSWORD,
+    ATTR_FRAMED_IP_ADDRESS,
     ATTR_MESSAGE_AUTHENTICATOR,
     ATTR_NAS_IP_ADDRESS,
     ATTR_SESSION_TIMEOUT,
@@ -135,8 +136,18 @@ class RadiusAuthProtocol(asyncio.DatagramProtocol):
             mac_address = calling_station.decode("ascii", errors="ignore").strip()
             nas_ip = addr[0]
 
+            # Extraction Framed-IP-Address (RFC 2865 Type 8)
+            ip_raw = attrs.get(ATTR_FRAMED_IP_ADDRESS, [b""])[0]
+            client_ip = ""
+            if len(ip_raw) == 4:
+                import socket
+                try:
+                    client_ip = socket.inet_ntoa(ip_raw)
+                except Exception:
+                    client_ip = ""
+
             print(
-                f"[{now_str}] [RADIUS REQ] Id={identifier} From={nas_ip}:{addr[1]} User='{username}' MAC='{mac_address}' CHAP={is_chap} MsgAuth={has_message_auth}",
+                f"[{now_str}] [RADIUS REQ] Id={identifier} From={nas_ip}:{addr[1]} User='{username}' IP='{client_ip}' MAC='{mac_address}' CHAP={is_chap} MsgAuth={has_message_auth}",
                 flush=True,
             )
 
@@ -146,6 +157,7 @@ class RadiusAuthProtocol(asyncio.DatagramProtocol):
                 password=password,
                 nas_ip=nas_ip,
                 mac_address=mac_address,
+                ip_address=client_ip,
             )
 
             resp_code = RADIUS_CODE_ACCESS_ACCEPT if is_accepted else RADIUS_CODE_ACCESS_REJECT
@@ -252,8 +264,18 @@ class RadiusAcctProtocol(asyncio.DatagramProtocol):
             calling_station = attrs.get(ATTR_CALLING_STATION_ID, [b""])[0]
             mac_address = calling_station.decode("ascii", errors="ignore").strip()
 
+            # Extraction Framed-IP-Address (RFC 2866 Type 8)
+            ip_raw = attrs.get(ATTR_FRAMED_IP_ADDRESS, [b""])[0]
+            client_ip = ""
+            if len(ip_raw) == 4:
+                import socket
+                try:
+                    client_ip = socket.inet_ntoa(ip_raw)
+                except Exception:
+                    client_ip = ""
+
             print(
-                f"[{now_str}] [RADIUS ACCT] Id={identifier} User='{username}' StatusType={status_type} Uptime={session_time}s In={in_octets}B Out={out_octets}B MAC={mac_address}",
+                f"[{now_str}] [RADIUS ACCT] Id={identifier} User='{username}' IP='{client_ip}' StatusType={status_type} Uptime={session_time}s In={in_octets}B Out={out_octets}B MAC={mac_address}",
                 flush=True,
             )
 
@@ -265,6 +287,7 @@ class RadiusAcctProtocol(asyncio.DatagramProtocol):
                 input_octets=in_octets,
                 output_octets=out_octets,
                 mac_address=mac_address,
+                ip_address=client_ip,
             )
 
             # Réponse Accounting-Response (Code 5)
