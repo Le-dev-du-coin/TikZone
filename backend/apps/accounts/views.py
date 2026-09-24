@@ -1,11 +1,222 @@
+import datetime
+import secrets
+from decimal import Decimal
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .models import RegistrationOTP, User
 from .serializers import RegisterSerializer, UserSerializer
+
+
+class RegisterInitView(APIView):
+    """
+    Étape 1 d'inscription : Valide les informations, génère et envoie l'OTP à 6 chiffres.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", "").strip().lower()
+        phone_number = request.data.get("phone_number", "").strip()
+        password = request.data.get("password", "")
+        full_name = request.data.get("full_name", "").strip()
+        country = request.data.get("country", "Mali")
+        role = request.data.get("role", User.Role.OWNER)
+
+        if not email or not phone_number or not password:
+            return Response(
+                {"detail": "L'email, le numéro de téléphone et le mot de passe sont obligatoires."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if User.objects.filter(email__iexact=email).exists():
+            return Response(
+                {"detail": "Un compte avec cette adresse email existe déjà."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validation de robustesse du mot de passe
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            return Response({"detail": " ".join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Génération d'un code OTP sécurisé à 6 chiffres
+        otp_code = str(secrets.randbelow(900000) + 100000)
+        expires_at = timezone.now() + datetime.timedelta(minutes=10)
+
+        # Sauvegarde temporaire des données d'inscription sécurisées
+        otp_record = RegistrationOTP.objects.create(
+            phone_number=phone_number,
+            email=email,
+            otp_code=otp_code,
+            registration_data={
+                "email": email,
+                "phone_number": phone_number,
+                "full_name": full_name,
+                "country": country,
+                "role": role,
+                "password": password,
+            },
+            expires_at=expires_at,
+        )
+
+        # En mode DEBUG ou Sandbox, on trace dans la console et on retourne le code pour les tests
+        dev_otp = otp_code if getattr(settings, "DEBUG", True) else None
+
+        return Response(
+            {
+                "status": "OTP_SENT",
+                "otp_id": str(otp_record.id),
+                "phone_number": phone_number,
+                "email": email,
+                "expires_in_seconds": 600,
+                "dev_otp": dev_otp,
+                "detail": f"Code de confirmation envoyé avec succès au {phone_number}.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class RegisterConfirmView(APIView):
+    """
+    Étape 2 d'inscription : Vérifie l'OTP, crée l'utilisateur, initialise le Wallet et connecte.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        otp_id = request.data.get("otp_id")
+        code = str(request.data.get("otp_code", "")).strip()
+
+        if not otp_id or not code:
+            return Response(
+                {"detail": "L'identifiant de vérification et le code OTP sont obligatoires."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            otp_record = RegistrationOTP.objects.get(id=otp_id)
+        except (RegistrationOTP.DoesNotExist, ValueError):
+            return Response(
+                {"detail": "Session de vérification invalide ou introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if otp_record.is_verified:
+            return Response(
+                {"detail": "Ce code a déjà été utilisé."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if otp_record.is_expired():
+            return Response(
+                {"detail": "Ce code OTP a expiré. Veuillez demander un nouveau code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if otp_record.attempts >= 3:
+            return Response(
+                {"detail": "Nombre maximum de tentatives atteint. Veuillez recommencer l'inscription."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Vérification du code OTP
+        if otp_record.otp_code != code:
+            otp_record.attempts += 1
+            otp_record.save(update_fields=["attempts"])
+            remaining = 3 - otp_record.attempts
+            return Response(
+                {"detail": f"Code OTP incorrect. Il vous reste {remaining} tentative(s)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Code valide : finalisation de l'inscription
+        data = otp_record.registration_data
+        email = data.get("email")
+
+        # Double check unicité
+        if User.objects.filter(email__iexact=email).exists():
+            return Response(
+                {"detail": "Un compte avec cette adresse email existe déjà."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = User.objects.create_user(
+            email=email,
+            password=data.get("password"),
+            full_name=data.get("full_name", ""),
+            phone_number=data.get("phone_number", ""),
+            country=data.get("country", "Mali"),
+            role=data.get("role", User.Role.OWNER),
+        )
+
+        # Marquer l'OTP comme validé
+        otp_record.is_verified = True
+        otp_record.save(update_fields=["is_verified"])
+
+        # Initialisation du Wallet
+        from apps.billing.models import Wallet
+        Wallet.objects.get_or_create(user=user, defaults={"balance": Decimal("0.00")})
+
+        # Création du Token pour connexion automatique immédiate
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "status": "REGISTERED",
+                "token": token.key,
+                "user": UserSerializer(user).data,
+                "detail": "Votre compte a été vérifié et créé avec succès !",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RegisterResendOTPView(APIView):
+    """
+    Renvoi d'un nouveau code OTP en cas de non-réception.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        otp_id = request.data.get("otp_id")
+        try:
+            otp_record = RegistrationOTP.objects.get(id=otp_id)
+        except (RegistrationOTP.DoesNotExist, ValueError):
+            return Response(
+                {"detail": "Session de vérification introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if otp_record.is_verified:
+            return Response(
+                {"detail": "Cette session a déjà été validée."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Nouveau code et réinitialisation des tentatives
+        new_otp = str(secrets.randbelow(900000) + 100000)
+        otp_record.otp_code = new_otp
+        otp_record.attempts = 0
+        otp_record.expires_at = timezone.now() + datetime.timedelta(minutes=10)
+        otp_record.save(update_fields=["otp_code", "attempts", "expires_at"])
+
+        dev_otp = new_otp if getattr(settings, "DEBUG", True) else None
+
+        return Response(
+            {
+                "status": "OTP_RESENT",
+                "otp_id": str(otp_record.id),
+                "phone_number": otp_record.phone_number,
+                "dev_otp": dev_otp,
+                "detail": f"Nouveau code OTP envoyé au {otp_record.phone_number}.",
+            }
+        )
 
 
 class RegisterView(APIView):

@@ -560,5 +560,90 @@ export const api = {
     }
     return data;
   },
+
+  // === LIGDICASH PAYMENT GATEWAY ===
+  async initiateLigdiCash(amount: number, customerPhone = "", returnUrl = "") {
+    const res = await fetch(`${API_BASE}/billing/ligdicash/initiate/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        amount: amount.toString(),
+        customer_phone: customerPhone,
+        return_url: returnUrl,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Erreur lors de l'initialisation LigdiCash");
+    }
+    return data;
+  },
+
+  async verifyLigdiCash(token: string) {
+    const res = await fetch(`${API_BASE}/billing/ligdicash/verify/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ token }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Erreur lors de la vérification LigdiCash");
+    }
+    if (typeof data.balance === "number") {
+      walletEvents.emitBalanceUpdated(data.balance);
+    }
+    return data;
+  },
+
+  // === AUTHENTICATION & REGISTRATION OTP ===
+  async registerInit(payload: {
+    email: string;
+    password: string;
+    full_name: string;
+    phone_number: string;
+    country: string;
+    role: "TECHNICIAN" | "OWNER";
+  }) {
+    const res = await fetch(`${API_BASE}/accounts/register/init/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const errorMsg = typeof data === "object" ? Object.values(data).flat().join(" ") : "Erreur d'inscription";
+      throw new Error(errorMsg);
+    }
+    return data;
+  },
+
+  async registerConfirm(otpId: string, otpCode: string) {
+    const res = await fetch(`${API_BASE}/accounts/register/confirm/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ otp_id: otpId, otp_code: otpCode }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const errorMsg = typeof data === "object" ? Object.values(data).flat().join(" ") : "Code invalide";
+      throw new Error(errorMsg);
+    }
+    return data;
+  },
+
+  async registerResend(otpId: string) {
+    const res = await fetch(`${API_BASE}/accounts/register/resend/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ otp_id: otpId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const errorMsg = typeof data === "object" ? Object.values(data).flat().join(" ") : "Erreur de renvoi";
+      throw new Error(errorMsg);
+    }
+    return data;
+  },
 };
+
 

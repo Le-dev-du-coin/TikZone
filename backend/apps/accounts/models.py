@@ -80,3 +80,30 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.email} ({self.get_role_display()})"
+
+
+class RegistrationOTP(models.Model):
+    """Stocke les codes OTP temporaires pour la validation des inscriptions."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    phone_number = models.CharField("Numéro de téléphone", max_length=30, db_index=True)
+    email = models.EmailField("Adresse Email", db_index=True)
+    otp_code = models.CharField("Code OTP", max_length=10)
+    registration_data = models.JSONField("Données d'inscription temporaires", default=dict)
+    attempts = models.PositiveSmallIntegerField("Nombre de tentatives", default=0)
+    is_verified = models.BooleanField("Est validé", default=False)
+    expires_at = models.DateTimeField("Date d'expiration")
+    created_at = models.DateTimeField("Créé le", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "OTP d'inscription"
+        verbose_name_plural = "OTPs d'inscription"
+        ordering = ["-created_at"]
+
+    def is_expired(self) -> bool:
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return f"OTP pour {self.phone_number} ({self.email}) - Expire: {self.expires_at}"
+

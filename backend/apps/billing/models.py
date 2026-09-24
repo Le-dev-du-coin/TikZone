@@ -64,6 +64,7 @@ class Transaction(models.Model):
         WAVE = "WAVE", "Wave"
         MOOV = "MOOV", "Moov Money"
         CARD = "CARD", "Carte Bancaire"
+        LIGDICASH = "LIGDICASH", "LigdiCash (Orange, Moov, Wave, MTN, Telecel)"
         OFFLINE = "OFFLINE", "Paiement hors-ligne / Reçu"
         WALLET = "WALLET", "Débit direct du Wallet"
 
@@ -88,6 +89,7 @@ class Transaction(models.Model):
         default=PaymentMethod.WALLET,
     )
     reference = models.CharField("Référence de paiement", max_length=100, blank=True)
+    external_reference = models.CharField("Référence externe passerelle", max_length=255, blank=True)
     description = models.TextField("Description", blank=True)
     created_at = models.DateTimeField("Date de création", auto_now_add=True)
 

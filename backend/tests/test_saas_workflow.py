@@ -249,3 +249,101 @@ class TestMikrootSaaSWorkflow:
         )
         assert 800 <= ticket_active.remaining_seconds <= 900
 
+    def test_registration_otp_flow(self):
+        """Vérifie le cycle complet d'inscription avec vérification OTP."""
+        from apps.accounts.models import RegistrationOTP
+
+        # 1. Étape Init
+        reg_payload = {
+            "email": "newowner@tikzone.net",
+            "password": "SecurePassword123!",
+            "full_name": "Nouveau Gérant",
+            "phone_number": "+22376000000",
+            "country": "Mali",
+            "role": "OWNER",
+        }
+        init_resp = self.client.post("/api/accounts/register/init/", reg_payload)
+        assert init_resp.status_code == 200
+        data = init_resp.json()
+        assert "otp_id" in data
+        otp_id = data["otp_id"]
+        otp_record = RegistrationOTP.objects.get(id=otp_id)
+        assert otp_record.phone_number == "+22376000000"
+
+        # 2. Mauvais code OTP (incrément tentative)
+        bad_confirm_resp = self.client.post(
+            "/api/accounts/register/confirm/",
+            {"otp_id": otp_id, "otp_code": "000000"},
+        )
+        assert bad_confirm_resp.status_code == 400
+        otp_record.refresh_from_db()
+        assert otp_record.attempts == 1
+
+        # 3. Renvoyer le code OTP
+        resend_resp = self.client.post(
+            "/api/accounts/register/resend/",
+            {"otp_id": otp_id},
+        )
+        assert resend_resp.status_code == 200
+        otp_record.refresh_from_db()
+        assert otp_record.attempts == 0
+        new_code = otp_record.otp_code
+
+        # 4. Confirmation valide avec le bon code
+        confirm_resp = self.client.post(
+            "/api/accounts/register/confirm/",
+            {"otp_id": otp_id, "otp_code": new_code},
+        )
+        assert confirm_resp.status_code == 201
+        conf_data = confirm_resp.json()
+        assert "token" in conf_data
+        assert conf_data["user"]["email"] == "newowner@tikzone.net"
+        
+        # Vérifie que l'utilisateur est bien créé et son wallet initialisé
+        new_user = User.objects.get(email="newowner@tikzone.net")
+        assert new_user.role == User.Role.OWNER
+        assert Wallet.objects.filter(user=new_user).exists()
+
+    def test_ligdicash_sandbox_workflow(self):
+        """Vérifie l'initialisation et la validation d'une recharge LigdiCash en mode Sandbox."""
+        self.client.force_authenticate(user=self.technician)
+        wallet = Wallet.objects.get(user=self.technician)
+        initial_balance = wallet.balance
+
+        # 1. Initiation paiement LigdiCash
+        init_resp = self.client.post(
+            "/api/billing/ligdicash/initiate/",
+            {"amount": "5000.00", "customer_phone": "+22370000001"},
+        )
+        assert init_resp.status_code == 200
+        init_data = init_resp.json()
+        assert init_data["success"] is True
+        assert init_data["is_sandbox"] is True
+        token = init_data["token"]
+        assert token.startswith("sandbox_tok_")
+
+        # 2. Vérification et crédit
+        verify_resp = self.client.post(
+            "/api/billing/ligdicash/verify/",
+            {"token": token},
+        )
+        assert verify_resp.status_code == 200
+        verify_data = verify_resp.json()
+        assert verify_data["success"] is True
+        assert verify_data["status"] == "COMPLETED"
+
+        wallet.refresh_from_db()
+        assert wallet.balance == initial_balance + Decimal("5000.00")
+        
+        # 3. Vérification de protection contre double crédit
+        double_resp = self.client.post(
+            "/api/billing/ligdicash/verify/",
+            {"token": token},
+        )
+        assert double_resp.status_code == 200
+        double_data = double_resp.json()
+        assert double_data.get("already_processed") is True
+        wallet.refresh_from_db()
+        assert wallet.balance == initial_balance + Decimal("5000.00")
+
+

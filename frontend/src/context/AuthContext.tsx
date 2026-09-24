@@ -25,6 +25,9 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: any) => Promise<{ success: boolean; error?: string }>;
+  registerInit: (payload: any) => Promise<{ success: boolean; otp_id?: string; dev_otp?: string; message?: string; error?: string }>;
+  registerConfirm: (otpId: string, otpCode: string) => Promise<{ success: boolean; error?: string }>;
+  registerResend: (otpId: string) => Promise<{ success: boolean; dev_otp?: string; message?: string; error?: string }>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -181,6 +184,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const registerInit = async (payload: any) => {
+    try {
+      const res = await fetch(`${API_BASE}/accounts/register/init/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const errorMsg = typeof data === "object" ? Object.values(data).flat().join(" ") : "Erreur d'initialisation";
+        return { success: false, error: errorMsg };
+      }
+      return {
+        success: true,
+        otp_id: data.otp_id,
+        dev_otp: data.dev_otp,
+        message: data.message,
+      };
+    } catch (networkErr: any) {
+      return { success: false, error: "Impossible de joindre le serveur. Vérifiez votre connexion." };
+    }
+  };
+
+  const registerConfirm = async (otpId: string, otpCode: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/accounts/register/confirm/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp_id: otpId, otp_code: otpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const errorMsg = typeof data === "object" ? Object.values(data).flat().join(" ") : "Code invalide";
+        return { success: false, error: errorMsg };
+      }
+      setToken(data.token);
+      setUser(data.user);
+      localStorage.setItem("mikroot_token", data.token);
+      localStorage.setItem("mikroot_user", JSON.stringify(data.user));
+      return { success: true };
+    } catch (networkErr: any) {
+      return { success: false, error: "Erreur de validation. Vérifiez votre connexion." };
+    }
+  };
+
+  const registerResend = async (otpId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/accounts/register/resend/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp_id: otpId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const errorMsg = typeof data === "object" ? Object.values(data).flat().join(" ") : "Erreur de renvoi";
+        return { success: false, error: errorMsg };
+      }
+      return {
+        success: true,
+        dev_otp: data.dev_otp,
+        message: data.message,
+      };
+    } catch (networkErr: any) {
+      return { success: false, error: "Erreur lors du renvoi de l'OTP." };
+    }
+  };
+
   const logout = () => {
     const currentToken = localStorage.getItem("mikroot_token");
     if (currentToken && !currentToken.startsWith("demo-")) {
@@ -207,6 +277,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         login,
         register,
+        registerInit,
+        registerConfirm,
+        registerResend,
         logout,
         refreshUser,
       }}

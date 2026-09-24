@@ -201,3 +201,8 @@ RADIUS_SERVER_IP = config("RADIUS_SERVER_IP", default="172.29.88.1")
 RADIUS_AUTH_PORT = config("RADIUS_AUTH_PORT", default=1812, cast=int)
 RADIUS_ACCT_PORT = config("RADIUS_ACCT_PORT", default=1813, cast=int)
 
+# Configuration LigdiCash Payment Gateway (Sandbox & Live)
+LIGDICASH_API_KEY = config("LIGDICASH_API_KEY", default="sandbox_api_key_tikzone")
+LIGDICASH_AUTH_TOKEN = config("LIGDICASH_AUTH_TOKEN", default="sandbox_auth_token_tikzone")
+LIGDICASH_SANDBOX = config("LIGDICASH_SANDBOX", default=True, cast=bool)
+
